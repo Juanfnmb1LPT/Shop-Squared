@@ -56,6 +56,18 @@ function convertCSV() {
           option1: productRow ? (productRow["Option1 Value"] || "") : ""
         };
 
+        // Determine a single archived state for the entire handle group:
+        // if any row is "archived" or "draft", mark the whole group archived = "Y"
+        const groupArchived = group.some(r => {
+          const s = (r["Status"] || "").toLowerCase();
+          return s === "archived" || s === "draft";
+        }) ? "Y" : "N";
+
+        // Ensure a consistent option name/value across the group. Prefer product-level
+        // Option1 Name, then fall back to Option1 Value, then "Title".
+        const groupOptionName = productRow ? (productRow["Option1 Name"] || productRow["Option1 Value"] || "Title") : "Title";
+        const groupOptionValue = productRow ? (productRow["Option1 Value"] || "") : "";
+
         group.forEach(row => {
           const sku = row["Variant SKU"];
           if (!sku) return;
@@ -68,11 +80,11 @@ function convertCSV() {
           const weight = " ";
           const inventoryQty = row["Variant Inventory Qty"] || "0";
 
-          const archived = (row["Status"] || "").toLowerCase() === "archived" ? "Y" : "N";
+          const archived = groupArchived;
           const sellable = "";
 
-          const optionName = row["Option1 Name"] || "Title";
-          const optionValue = row["Option1 Value"] || base.option1 || "Default";
+          const optionName = groupOptionName;
+          const optionValue = row["Option1 Value"] || groupOptionValue || "Default";
           const variationName = optionValue;
 
           const squareRow = [
