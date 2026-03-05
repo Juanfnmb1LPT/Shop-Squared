@@ -240,6 +240,51 @@ input[type=file] {
   margin-bottom: 4px
 }
 
+/* Home page: slightly larger, more prominent sub text */
+.home-sub-large {
+  font-size: 20px;
+  color: #0b2545;
+  margin-top: 12px;
+  line-height: 1.45;
+text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  font-weight: 300;
+}
+
+/* Slightly richer blue gradient for the sidebar to feel professional */
+.dashboard {
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.99), rgba(148, 186, 248, 0.97));
+  border-right: 1px solid rgba(10, 44, 99, 0.12);
+  backdrop-filter: blur(6px);
+}
+
+/* Make nav links a bit more prominent */
+.dash-link {
+  padding: 12px 14px;
+  font-size: 15px;
+  border-radius: 12px;
+  color: #082145;
+  border: 1px solid rgba(8,33,69,0.06);
+}
+
+.dash-link:hover {
+  background: linear-gradient(90deg, rgba(8,33,69,0.06), rgba(10,86,160,0.05));
+}
+
+/* Active nav: richer, darker blue gradient */
+.dash-link.router-link-active {
+  color: #fff;
+  background: linear-gradient(90deg, #123a8a, #0b63d6);
+  border-color: transparent;
+}
+
+/* Home card tweaks */
+.home-card {
+  text-align: center;
+  padding: 48px;
+}
+
 .hero-controls {
   display: flex;
   gap: 14px;
