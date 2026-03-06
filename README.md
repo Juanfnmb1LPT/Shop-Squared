@@ -1,4 +1,5 @@
 # CSV Shopify & Square Converter (Vue)
+Live at https://juanfnmb1lpt.github.io/CSV-Converter/
 
 Browser-based CSV tools for ecommerce workflows, now implemented as a Vue 3 single-page app with Vite.
 
