@@ -7,8 +7,10 @@ All parsing and processing runs locally in the browser. No file data is uploaded
 ## Features
 
 - Shopify → Square conversion (`square_import.csv` output)
-- Update Shopify variant quantities from a Square inventory CSV
-- Client-side CSV parsing via PapaParse for both flows
+- Update Shopify variant quantities from a Square inventory file
+- Upload input supports CSV, XLSX, and XLS files
+- Excel uploads use the first sheet and first row as headers, then flatten to row-based data
+- Client-side parsing via PapaParse (CSV) and SheetJS (Excel)
 
 ## Run locally
 
@@ -50,14 +52,19 @@ Routing uses hash mode (`/#/`) so direct page refresh works on GitHub Pages with
 
 ## App routes
 
-- `/` Redirects to Shopify → Square tool
+- `/` Home page with step page options
+- `/#/pre-con` Pre-Con step page
+- `/#/post-con` Post-Con step page
 - `/#/shopify-to-square` Shopify → Square tool
 - `/#/update-quantity` Update Shopify quantity tool
 
-The app uses a persistent left dashboard for navigation between tools.
+The app uses a persistent left dashboard for navigation between all pages.
 
 ## Project structure
 
+- `src/views/HomeView.vue` Home page with step options
+- `src/views/PreConView.vue` Pre-conversion checklist page
+- `src/views/PostConView.vue` Post-conversion checklist page
 - `src/views/ShopifyToSquareView.vue` Shopify → Square UI
 - `src/views/UpdateQuantityView.vue` Quantity update UI
 - `src/lib/convertShopToSquare.js` Shopify → Square transformation logic

@@ -1,4 +1,4 @@
-import Papa from 'papaparse';
+import { parseUploadedTable } from './parseUploadedTable';
 
 function stripHtml(html) {
     const div = document.createElement('div');
@@ -6,19 +6,81 @@ function stripHtml(html) {
     return div.textContent || div.innerText || '';
 }
 
-function parseFile(file) {
-    return new Promise((resolve, reject) => {
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (results) => resolve(results.data || []),
-            error: (error) => reject(error),
-        });
-    });
+function findOptionValueByName(row, nameNeedle) {
+    const normalizedNeedle = nameNeedle.toLowerCase();
+    for (let index = 1; index <= 3; index += 1) {
+        const optionName = (row[`Option${index} Name`] || '').toLowerCase();
+        if (optionName.includes(normalizedNeedle)) {
+            return row[`Option${index} Value`] || '';
+        }
+    }
+    return '';
+}
+
+function findOptionValueByNameUsingProductNames(row, productRow, nameNeedle) {
+    const normalizedNeedle = nameNeedle.toLowerCase();
+    for (let index = 1; index <= 3; index += 1) {
+        const rowOptionName = (row[`Option${index} Name`] || '').toLowerCase();
+        const productOptionName = (productRow ? productRow[`Option${index} Name`] : '' || '').toLowerCase();
+        if (rowOptionName.includes(normalizedNeedle) || productOptionName.includes(normalizedNeedle)) {
+            return row[`Option${index} Value`] || (productRow ? productRow[`Option${index} Value`] : '') || '';
+        }
+    }
+    return '';
+}
+
+function hasOptionName(row, nameNeedle) {
+    const normalizedNeedle = nameNeedle.toLowerCase();
+    for (let index = 1; index <= 3; index += 1) {
+        const optionName = (row[`Option${index} Name`] || '').toLowerCase();
+        if (optionName.includes(normalizedNeedle)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function normalizeGenderValue(rawGender) {
+    const value = (rawGender || '').toLowerCase().trim();
+    if (!value) return '';
+
+    if (value.includes('womens') || value.includes('women') || value.includes('woman') || value.includes('ladies') || value.includes('lady') || value.includes('female')) {
+        return 'Womens';
+    }
+
+    if (value.includes('mens') || value.includes('men') || value.includes('male')) {
+        return 'Mens';
+    }
+
+    return '';
+}
+
+function detectMensOrWomens(row, productRow) {
+    const explicitGender = normalizeGenderValue(findOptionValueByName(row, 'gender'))
+        || (productRow ? normalizeGenderValue(findOptionValueByName(productRow, 'gender')) : '');
+    if (explicitGender) return explicitGender;
+
+    const searchableText = [
+        row.Title,
+        productRow ? productRow.Title : '',
+        row.Handle,
+        productRow ? productRow.Handle : '',
+        row.Tags,
+        productRow ? productRow.Tags : '',
+        row['Variant SKU'],
+        row['Image Src'],
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    const hasWomenSignal = /\bwomens\b|\bwomen\b|\bwoman\b|\bladies\b|\blady\b|\bfemale\b/.test(searchableText);
+    return hasWomenSignal ? 'Womens' : 'Mens';
 }
 
 export async function convertShopifyToSquareCsv(file) {
-    const data = await parseFile(file);
+    const parsed = await parseUploadedTable(file);
+    const data = parsed.data || [];
 
     const squareHeaders = [
         'Reference Handle', 'Token', 'Item Name', 'Customer-facing Name', 'Variation Name',
@@ -53,11 +115,6 @@ export async function convertShopifyToSquareCsv(file) {
             return status === 'archived' || status === 'draft';
         }) ? 'Y' : 'N';
 
-        const groupOptionName = productRow
-            ? (productRow['Option1 Name'] || productRow['Option1 Value'] || 'Title')
-            : 'Title';
-        const groupOptionValue = productRow ? (productRow['Option1 Value'] || '') : '';
-
         group.forEach((row) => {
             const sku = row['Variant SKU'];
             if (!sku) return;
@@ -68,14 +125,25 @@ export async function convertShopifyToSquareCsv(file) {
             const price = row['Variant Price'] || '';
             const barcode = row['Variant Barcode'] || '';
             const inventoryQty = row['Variant Inventory Qty'] || '0';
-            const optionValue = row['Option1 Value'] || groupOptionValue || 'Default';
+
+            const sizeValue = findOptionValueByName(row, 'size')
+                || findOptionValueByNameUsingProductNames(row, productRow, 'size')
+                || (productRow ? findOptionValueByName(productRow, 'size') : '')
+                || row['Option1 Value']
+                || 'Size';
+            const genderValue = detectMensOrWomens(row, productRow);
+            const hasStyle = hasOptionName(row, 'style') || (productRow ? hasOptionName(productRow, 'style') : false);
+
+            const variationName = sizeValue || 'Size';
+            const optionName = hasStyle ? 'Style' : '';
+            const optionValue = hasStyle ? genderValue : '';
 
             output.push([
-                handle, '', finalTitle, finalTitle, optionValue,
+                handle, '', finalTitle, finalTitle, variationName,
                 sku, finalDescription, finalCategory, '', barcode,
                 'Physical good', ' ', '', '',
                 price, '', groupArchived, '', 'N', ' ',
-                'N', groupOptionName, optionValue,
+                'N', optionName, optionValue,
                 '0', inventoryQty, 'TRUE', '',
             ]);
         });

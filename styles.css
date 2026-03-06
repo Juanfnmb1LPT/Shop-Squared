@@ -50,11 +50,22 @@ body {
   gap: 20px;
 }
 
+.dashboard-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
 .dashboard-brand {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 10px;
+  width: 100%;
+  text-align: center;
 }
 
 .dashboard-brand img {
@@ -72,6 +83,35 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.nav-toggle {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 32px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 0 0 1px rgba(8, 33, 69, 0.06);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.nav-toggle-bar {
+  width: 20px;
+  height: 2px;
+  border-radius: 999px;
+  background: #082145;
+  display: block;
+  margin: 3px 0;
 }
 
 .dash-link {
@@ -246,7 +286,7 @@ input[type=file] {
   color: #0b2545;
   margin-top: 12px;
   line-height: 1.45;
-text-align: center;
+  text-align: center;
   margin-left: auto;
   margin-right: auto;
   font-weight: 300;
@@ -265,11 +305,11 @@ text-align: center;
   font-size: 15px;
   border-radius: 12px;
   color: #082145;
-  border: 1px solid rgba(8,33,69,0.06);
+  border: 1px solid rgba(8, 33, 69, 0.06);
 }
 
 .dash-link:hover {
-  background: linear-gradient(90deg, rgba(8,33,69,0.06), rgba(10,86,160,0.05));
+  background: linear-gradient(90deg, rgba(8, 33, 69, 0.06), rgba(10, 86, 160, 0.05));
 }
 
 /* Active nav: richer, darker blue gradient */
@@ -283,6 +323,60 @@ text-align: center;
 .home-card {
   text-align: center;
   padding: 48px;
+}
+
+.home-options {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.step-card {
+  max-width: 900px;
+}
+
+.step-list {
+  margin: 8px auto 0;
+  max-width: 760px;
+  padding-left: 22px;
+  line-height: 1.55;
+  color: #0f1f46;
+}
+
+.step-list li {
+  margin: 8px 0;
+}
+
+.function-callout {
+  margin: 0;
+  max-width: 760px;
+  padding: 4px 2px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #0f1f46;
+  line-height: 1.5;
+}
+
+.function-block {
+  margin: 8px auto 6px;
+  max-width: 800px;
+  padding: 12px 14px;
+  border: 1px solid rgba(11, 99, 214, 0.28);
+  border-left: 4px solid #0b63d6;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.function-block .note-container {
+  margin-top: 8px;
+}
+
+.function-block .note {
+  margin-top: 8px;
+  margin-bottom: 0;
 }
 
 .hero-controls {
@@ -303,6 +397,42 @@ text-align: center;
   box-sizing: border-box;
   flex-wrap: wrap;
   padding: 0 8px;
+}
+
+.tool-panel {
+  max-width: 840px;
+  padding: 16px 18px;
+  border: 1px solid rgba(11, 99, 214, 0.2);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(243, 249, 255, 0.96));
+  box-shadow: 0 8px 24px rgba(14, 42, 99, 0.08);
+}
+
+.instruction-panel,
+.function-panel {
+  max-width: 840px;
+  margin: 12px auto 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(11, 99, 214, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #0f1f46;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.instruction-panel strong,
+.function-panel strong {
+  color: #082145;
+}
+
+.instruction-panel ol {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.instruction-panel li {
+  margin: 6px 0;
 }
 
 /* Stacked layout used on the Update Quantity page */
@@ -480,6 +610,11 @@ text-align: center;
   margin-top: 10px
 }
 
+.card .instruction-panel,
+.card .function-panel {
+  text-align: left;
+}
+
 /* Optional increased spacing for pages that need more breathing room */
 .card.spacious .lead {
   margin-bottom: 8px
@@ -525,7 +660,7 @@ text-align: center;
     min-width: 0;
     border-right: 0;
     border-bottom: 1px solid rgba(37, 99, 235, 0.08);
-    padding: 14px;
+    padding: 10px 14px 14px;
   }
 
   .dashboard-brand {
@@ -537,12 +672,17 @@ text-align: center;
   }
 
   .dashboard-nav {
-    flex-direction: row;
+    display: none;
+    flex-direction: column;
+    margin-top: 8px;
   }
 
-  .dash-link {
-    flex: 1;
-    text-align: center;
+  .dashboard-nav.is-open {
+    display: flex;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
   }
 
   .app-main {
@@ -571,6 +711,13 @@ text-align: center;
     align-items: stretch;
     gap: 10px;
     padding: 0
+  }
+
+  .tool-panel,
+  .instruction-panel,
+  .function-panel {
+    width: 100%;
+    padding: 12px;
   }
 
   .note-container .file-control,
@@ -626,6 +773,16 @@ text-align: center;
   .hero-controls .btn {
     width: 100%;
     justify-content: center
+  }
+
+  .home-options {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .home-options .btn {
+    width: 100%;
+    max-width: 320px;
   }
 }
 
