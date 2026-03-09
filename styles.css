@@ -655,6 +655,11 @@ input[type=file] {
     flex-direction: column;
   }
 
+  .nav-toggle {
+    left: 0;
+    right: auto;
+  }
+
   .dashboard {
     width: 100%;
     min-width: 0;
