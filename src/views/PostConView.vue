@@ -1,6 +1,5 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import InfiniteCarousel from '../components/InfiniteCarousel.vue';
 import { buildUpdatedShopifyInventoryData, updateShopifyInventoryCsv } from '../lib/updateInventoryFromSquare';
 import { downloadCsv } from '../lib/downloadCsv';
@@ -23,7 +22,6 @@ const isPreviewLoading = ref(false);
 const previewHeaders = ref([]);
 const previewRows = ref([]);
 const hasPreview = ref(false);
-const router = useRouter();
 
 const stepVisuals = {
   1: [
@@ -132,8 +130,9 @@ function goBack() {
   }
 }
 
-function goHome() {
-  router.push('/');
+function startOver() {
+  currentStage.value = 0;
+  resetPreview();
 }
 
 async function onProcess() {
@@ -183,8 +182,8 @@ function closePreview() {
 <template>
   <div class="card spacious quantity-card tool-card step-card guided-stepper-card postcon-stepper-card">
     <div class="hero guided-step-hero postcon-hero">
-      <div class="hero-title">{{ currentContent.title }}</div>
-      <div v-if="currentStage === 0" class="hero-sub postcon-subtitle">{{ currentContent.description }}</div>
+      <div class="hero-title reveal-fade-up">{{ currentContent.title }}</div>
+      <div v-if="currentStage === 0" class="hero-sub postcon-subtitle reveal-fade-up reveal-delay-1">{{ currentContent.description }}</div>
     </div>
 
     <div class="stepper-progress" aria-label="Post-conversion progress">
@@ -224,7 +223,7 @@ function closePreview() {
 
     <div class="guided-step-shell postcon-step-shell">
       <div v-if="currentStage === 0" class="postcon-panel guided-step-panel intro-panel">
-        <p class="postcon-copy guided-step-copy">
+        <p class="postcon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           This walkthrough keeps the quantity update process in sequence so you can move through it one action at a time.
         </p>
         <button class="btn" type="button" @click="goNext">Start Steps</button>
@@ -232,7 +231,7 @@ function closePreview() {
 
       <div v-else-if="currentStage === 1" class="postcon-panel guided-step-panel">
         <div class="postcon-step-number">01</div>
-        <p class="postcon-copy guided-step-copy">
+        <p class="postcon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           Export the Square inventory CSV so you have the most recent quantity values ready for the update.
         </p>
         <div class="postcon-visual-card guided-visual-card" aria-label="Step 1 visual guide">
@@ -246,7 +245,7 @@ function closePreview() {
 
       <div v-else-if="currentStage === 2" class="postcon-panel guided-step-panel">
         <div class="postcon-step-number">02</div>
-        <p class="postcon-copy guided-step-copy">
+        <p class="postcon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           Export the Shopify inventory CSV so the Square quantities can be matched back to the correct Shopify SKUs.
         </p>
         <div class="postcon-visual-card guided-visual-card" aria-label="Step 2 visual guide">
@@ -261,17 +260,17 @@ function closePreview() {
       <div v-else-if="currentStage === 3" class="postcon-panel guided-step-panel">
         <div class="postcon-step-number">03</div>
         <div class="function-block guided-function-block postcon-function-block">
-          <p class="postcon-copy guided-step-copy postcon-convert-copy">
+          <p class="postcon-copy guided-step-copy postcon-convert-copy reveal-fade-up reveal-delay-1">
             Upload both CSV files, review the preview if needed, then click <strong>Download Updated Shopify CSV</strong>.
           </p>
 
-          <div class="function-callout">
+          <div class="function-callout reveal-fade-up reveal-delay-2">
             <strong>What this function does:</strong>
             <br>
             Matches <strong>Variant SKU</strong> in Shopify to SKU in Square, then updates <strong>Variant Inventory Qty</strong> using Square's current quantity values.
           </div>
 
-          <p class="postcon-status guided-step-status" :class="{ 'is-ready': hasProcessed }">
+          <p class="postcon-status guided-step-status reveal-fade-up reveal-delay-3" :class="{ 'is-ready': hasProcessed }">
             {{ hasProcessed ? 'Updated Shopify CSV created. Continue with the final import step.' : 'Generate the updated Shopify CSV to complete this step.' }}
           </p>
 
@@ -308,7 +307,7 @@ function closePreview() {
 
       <div v-else class="postcon-panel guided-step-panel">
         <div class="postcon-step-number">04</div>
-        <p class="postcon-copy guided-step-copy">
+        <p class="postcon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           Import the newly created CSV into Shopify, then review the import summary and fix any issues before completing the update.
         </p>
         <div class="postcon-visual-card guided-visual-card" aria-label="Step 4 visual guide">
@@ -318,11 +317,11 @@ function closePreview() {
             dot-label-prefix="Show step 4 image"
           />
         </div>
-        <button class="btn" type="button" @click="goHome">Go to Home</button>
+        <button class="btn" type="button" @click="startOver">Start Over</button>
       </div>
     </div>
 
-    <p v-if="currentStage === 3" class="postcon-disclaimer guided-step-disclaimer">
+    <p v-if="currentStage === 3" class="postcon-disclaimer guided-step-disclaimer reveal-fade-up reveal-delay-2">
       Make sure you download the updated Shopify CSV before clicking Next Step.
     </p>
 

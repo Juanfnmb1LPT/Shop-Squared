@@ -1,6 +1,5 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import InfiniteCarousel from '../components/InfiniteCarousel.vue';
 import { buildShopifyToSquareRows, convertShopifyToSquareCsv } from '../lib/convertShopToSquare';
 import { downloadCsv } from '../lib/downloadCsv';
@@ -18,7 +17,6 @@ const isPreviewLoading = ref(false);
 const previewHeaders = ref([]);
 const previewRows = ref([]);
 const hasPreview = ref(false);
-const router = useRouter();
 
 const stepVisuals = {
   1: [
@@ -102,8 +100,9 @@ function goBack() {
   }
 }
 
-function goHome() {
-  router.push('/');
+function startOver() {
+  currentStage.value = 0;
+  resetPreview();
 }
 
 async function onConvert() {
@@ -152,8 +151,8 @@ function closePreview() {
 <template>
   <div class="card spacious tool-card step-card guided-stepper-card precon-stepper-card">
     <div class="hero guided-step-hero precon-hero">
-      <div class="hero-title">{{ currentContent.title }}</div>
-      <div v-if="currentStage === 0" class="hero-sub precon-subtitle">{{ currentContent.description }}</div>
+      <div class="hero-title reveal-fade-up">{{ currentContent.title }}</div>
+      <div v-if="currentStage === 0" class="hero-sub precon-subtitle reveal-fade-up reveal-delay-1">{{ currentContent.description }}</div>
     </div>
 
     <div class="stepper-progress" aria-label="Pre-conversion progress">
@@ -193,7 +192,7 @@ function closePreview() {
 
     <div class="guided-step-shell precon-step-shell">
       <div v-if="currentStage === 0" class="precon-panel guided-step-panel intro-panel">
-        <p class="precon-copy guided-step-copy">
+        <p class="precon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           This walkthrough breaks the process into one action at a time so you can move through the conversion in order.
         </p>
         <button class="btn" type="button" @click="goNext">Start Steps</button>
@@ -201,7 +200,7 @@ function closePreview() {
 
       <div v-else-if="currentStage === 1" class="precon-panel guided-step-panel precon-panel-step1">
         <div class="precon-step-number">01</div>
-        <p class="precon-copy guided-step-copy">
+        <p class="precon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           Export Shopify inventory CSV.
         </p>
         <div class="precon-visual-card guided-visual-card" aria-label="Step 1 visual guide">
@@ -216,17 +215,17 @@ function closePreview() {
       <div v-else-if="currentStage === 2" class="precon-panel guided-step-panel">
         <div class="precon-step-number">02</div>
         <div class="function-block guided-function-block precon-function-block">
-          <p class="precon-copy guided-step-copy precon-convert-copy">
+          <p class="precon-copy guided-step-copy precon-convert-copy reveal-fade-up reveal-delay-1">
             Upload it to the tool here, review the preview if needed, then click <strong>Download Square Ready CSV</strong>.
           </p>
 
-          <div class="function-callout">
+          <div class="function-callout reveal-fade-up reveal-delay-2">
             <strong>What this function does:</strong>
             <br>
             Reads the Shopify CSV and creates a Square-ready CSV mapped by key fields such as <strong>SKU</strong>, <strong>Handle</strong>, and other import-ready columns.
           </div>
 
-          <p class="precon-status guided-step-status" :class="{ 'is-ready': hasConverted }">
+          <p class="precon-status guided-step-status reveal-fade-up reveal-delay-3" :class="{ 'is-ready': hasConverted }">
             {{ hasConverted ? 'Square-ready CSV created. Continue with the final import step.' : 'Generate the Square-ready CSV to complete this step.' }}
           </p>
 
@@ -251,7 +250,7 @@ function closePreview() {
 
       <div v-else class="precon-panel guided-step-panel">
         <div class="precon-step-number">03</div>
-        <p class="precon-copy guided-step-copy">
+        <p class="precon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           Import the downloaded CSV into Square, then review the import results and resolve any warnings before you move on.
         </p>
         <div class="precon-visual-card guided-visual-card" aria-label="Step 3 visual guide">
@@ -261,11 +260,11 @@ function closePreview() {
             dot-label-prefix="Show step 3 image"
           />
         </div>
-        <button class="btn" type="button" @click="goHome">Go to Home</button>
+        <button class="btn" type="button" @click="startOver">Start Over</button>
       </div>
     </div>
 
-    <p v-if="currentStage === 2" class="precon-disclaimer guided-step-disclaimer">
+    <p v-if="currentStage === 2" class="precon-disclaimer guided-step-disclaimer reveal-fade-up reveal-delay-2">
       Make sure you download the Square CSV before clicking Next Step.
     </p>
 

@@ -78,11 +78,11 @@ function closePreview() {
 <template>
   <div class="card spacious quantity-card tool-card">
     <div class="hero">
-      <div class="hero-title">Update Shopify Quantity</div>
-      <div class="hero-sub">Upload Shopify and Square files to update quantities. Files are processed locally.</div>
+      <div class="hero-title reveal-fade-up">Update Shopify Quantity</div>
+      <div class="hero-sub reveal-fade-up reveal-delay-1">Upload Shopify and Square files to update quantities. Files are processed locally.</div>
     </div>
 
-    <div class="note instruction-panel">
+    <div class="note instruction-panel reveal-fade-up reveal-delay-1">
       <strong>Post-Con Steps</strong>
       <ol>
         <li>Export the latest inventory file from Square so you have the new quantity values.</li>
@@ -126,12 +126,12 @@ function closePreview() {
       </div>
     </div>
 
-    <p class="note function-panel">
+    <p class="note function-panel reveal-fade-up reveal-delay-2">
       <strong>What this function does:</strong><br>
       Matches <strong>Variant SKU</strong> in Shopify to SKU in Square, then updates <strong>Variant Inventory Qty</strong> using Square current quantity values.
     </p>
 
-    <p class="note">Uploads are processed locally. The script matches `Variant SKU` from Shopify to the SKU field in the Square file and replaces `Variant Inventory Qty` with the Square "current quantity" value (header containing the words "current quantity").</p>
+    <p class="note reveal-fade-up reveal-delay-3">Uploads are processed locally. The script matches `Variant SKU` from Shopify to the SKU field in the Square file and replaces `Variant Inventory Qty` with the Square "current quantity" value (header containing the words "current quantity").</p>
 
     <div v-if="hasPreview" class="preview-overlay" role="dialog" aria-modal="true" aria-labelledby="quantity-preview-title" @click.self="closePreview">
       <div class="preview-panel preview-dialog">
@@ -169,6 +169,7 @@ function closePreview() {
 <style scoped>
 .quantity-upload-panel {
   --quantity-control-width: 320px;
+  --quantity-label-offset: 24px;
   margin-top: 16px;
   width: 100%;
   max-width: 840px;
@@ -235,9 +236,10 @@ function closePreview() {
   max-width: min(100%, var(--quantity-control-width)) !important;
   min-width: 0;
   margin: 0;
+  height: 40px;
   min-height: 40px;
-  padding-top: 4px;
-  padding-bottom: 4px;
+  padding-top: 0;
+  padding-bottom: 0;
   box-sizing: border-box;
 }
 
@@ -249,10 +251,10 @@ function closePreview() {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
+  gap: calc(10px + var(--quantity-label-offset));
   margin: 0;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: var(--quantity-label-offset);
+  padding-bottom: 0;
 }
 
 .quantity-upload-action-btn {
@@ -283,6 +285,7 @@ function closePreview() {
 @media (max-width: 640px) {
   .quantity-upload-panel {
     --quantity-control-width: min(320px, 100%);
+    --quantity-label-offset: 0px;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -312,6 +315,7 @@ function closePreview() {
     max-width: min(100%, var(--quantity-control-width));
     margin-top: 0;
     gap: 8px;
+    padding-top: 0;
   }
 
   .quantity-upload-action-btn {

@@ -46,6 +46,7 @@
   line-height: 1.45;
   font-weight: 300;
   color: #0b2545;
+  animation: home-fade-up 0.5s ease 0.08s both;
 }
 
 .home-options {
@@ -62,6 +63,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   align-items: stretch;
+  animation: home-fade-up 0.55s ease 0.16s both;
 }
 
 .home-section {
@@ -74,6 +76,22 @@
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(18, 58, 138, 0.08);
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  animation: home-fade-up 0.55s ease both;
+}
+
+.home-section:first-child {
+  animation-delay: 0.22s;
+}
+
+.home-section:last-child {
+  animation-delay: 0.32s;
+}
+
+.home-section:hover {
+  background: rgba(232, 240, 255, 0.9);
+  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.08);
 }
 
 .home-section-advanced {
@@ -99,6 +117,26 @@
 
 .home-options-advanced {
   padding-top: 12px;
+}
+
+@keyframes home-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-sub-large,
+  .home-grid,
+  .home-section {
+    animation: none;
+  }
 }
 
 @media (max-width: 900px) {

@@ -68,11 +68,11 @@ function closePreview() {
 <template>
   <div class="card spacious tool-card">
     <div class="hero">
-      <div class="hero-title">Shopify → Square CSV Converter</div>
-      <div class="hero-sub">Files processed locally in your browser.</div>
+      <div class="hero-title reveal-fade-up">Shopify → Square CSV Converter</div>
+      <div class="hero-sub reveal-fade-up reveal-delay-1">Files processed locally in your browser.</div>
     </div>
 
-    <div class="note instruction-panel">
+    <div class="note instruction-panel reveal-fade-up reveal-delay-1">
       <strong>Pre-Con Steps</strong>
       <ol>
         <li>Export Shopify inventory CSV.</li>
@@ -98,12 +98,12 @@ function closePreview() {
       </div>
     </div>
 
-    <div class="note function-panel">
+    <div class="note function-panel reveal-fade-up reveal-delay-2">
       <strong>What this function does:</strong><br>
       Reads the Shopify file and creates a Square-ready CSV mapped by key fields such as <strong>SKU</strong>, <strong>Handle</strong>, and other import-ready columns.
     </div>
 
-    <div class="note">
+    <div class="note reveal-fade-up reveal-delay-3">
       Select a Shopify CSV or Excel file exported from your store. The download will be a CSV file ready to import to Square.
     </div>
 
