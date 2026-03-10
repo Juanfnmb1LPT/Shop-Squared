@@ -15,6 +15,25 @@ function closeNav() {
 
 <template>
   <div class="app-layout">
+    <header class="mobile-topbar">
+      <div class="mobile-topbar-brand">
+        <img :src="logoUrl" alt="LPT Realty logo" width="44" height="44" />
+        <div class="mobile-topbar-title">CSV Converter</div>
+      </div>
+
+      <button
+        type="button"
+        class="mobile-nav-trigger"
+        @click="toggleNav"
+        aria-label="Open navigation menu"
+        :aria-expanded="isNavOpen ? 'true' : 'false'"
+      >
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
+    </header>
+
     <aside class="dashboard" :class="{ 'is-mobile-open': isNavOpen }">
       <div class="dashboard-header">
         <div class="dashboard-brand">
@@ -24,15 +43,13 @@ function closeNav() {
 
         <button
           type="button"
-          class="nav-toggle"
-          @click="toggleNav"
-          aria-label="Toggle navigation menu"
-          :aria-expanded="isNavOpen ? 'true' : 'false'"
+          class="nav-collapse-btn"
+          aria-label="Close navigation menu"
+          @click="closeNav"
         >
-          <span class="nav-toggle-bar"></span>
-          <span class="nav-toggle-bar"></span>
-          <span class="nav-toggle-bar"></span>
+          Close
         </button>
+
       </div>
 
       <nav class="dashboard-nav" :class="{ 'is-open': isNavOpen }">
@@ -43,6 +60,14 @@ function closeNav() {
         <router-link class="dash-link" to="/update-quantity" @click="closeNav">Update Quantity</router-link>
       </nav>
     </aside>
+
+    <button
+      v-if="isNavOpen"
+      type="button"
+      class="nav-overlay"
+      aria-label="Close navigation menu"
+      @click="closeNav"
+    ></button>
 
     <main class="app-main">
       <router-view />
