@@ -18,7 +18,7 @@ function closeNav() {
     <aside class="dashboard" :class="{ 'is-mobile-open': isNavOpen }">
       <div class="dashboard-header">
         <div class="dashboard-brand">
-          <img :src="logoUrl" alt="LPT Realty logo" />
+          <img :src="logoUrl" alt="LPT Realty logo" width="88" height="88" />
           <div class="dashboard-title">CSV Converter</div>
         </div>
 
