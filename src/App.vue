@@ -58,6 +58,7 @@ function closeNav() {
         <router-link class="dash-link" to="/post-con" @click="closeNav">Post-Con Steps</router-link>
         <router-link class="dash-link" to="/shopify-to-square" @click="closeNav">Shopify to Square</router-link>
         <router-link class="dash-link" to="/update-quantity" @click="closeNav">Update Quantity</router-link>
+        <router-link class="dash-link" to="/search-inventory" @click="closeNav">Search Inventory</router-link>
       </nav>
     </aside>
 
