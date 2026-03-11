@@ -78,11 +78,11 @@ function closePreview() {
 <template>
   <div class="card spacious quantity-card tool-card">
     <div class="hero">
-      <div class="hero-title">Update Shopify Quantity</div>
-      <div class="hero-sub">Upload Shopify and Square files to update quantities. Files are processed locally.</div>
+      <div class="hero-title reveal-fade-up">Update Shopify Quantity</div>
+      <div class="hero-sub reveal-fade-up reveal-delay-1">Upload Shopify and Square files to update quantities. Files are processed locally.</div>
     </div>
 
-    <div class="note instruction-panel">
+    <div class="note instruction-panel reveal-fade-up reveal-delay-1">
       <strong>Post-Con Steps</strong>
       <ol>
         <li>Export the latest inventory file from Square so you have the new quantity values.</li>
@@ -92,42 +92,46 @@ function closePreview() {
       </ol>
     </div>
 
-    <div class="note-container note-quantity tool-panel">
-      <div class="quantity-row">
-        <label>Shopify file (old quantities):</label>
-        <label class="file-control">
-          <span class="file-btn">Choose File</span>
-          <span class="file-name">{{ shopifyName }}</span>
-          <input type="file" accept=".csv,.xlsx,.xls" @change="onShopifyChange" />
-        </label>
+    <div class="note-container tool-panel quantity-upload-panel">
+      <div class="quantity-upload-column quantity-upload-files">
+        <div class="quantity-upload-row">
+          <label>Shopify file (old quantities):</label>
+          <label class="file-control quantity-file-control">
+            <span class="file-btn">Choose File</span>
+            <span class="file-name">{{ shopifyName }}</span>
+            <input type="file" accept=".csv,.xlsx,.xls" @change="onShopifyChange" />
+          </label>
+        </div>
+
+        <div class="quantity-upload-row">
+          <label>Square file (new quantities):</label>
+          <label class="file-control quantity-file-control">
+            <span class="file-btn">Choose File</span>
+            <span class="file-name">{{ squareName }}</span>
+            <input type="file" accept=".csv,.xlsx,.xls" @change="onSquareChange" />
+          </label>
+        </div>
       </div>
 
-      <div class="quantity-row">
-        <label>Square file (new quantities):</label>
-        <label class="file-control">
-          <span class="file-btn">Choose File</span>
-          <span class="file-name">{{ squareName }}</span>
-          <input type="file" accept=".csv,.xlsx,.xls" @change="onSquareChange" />
-        </label>
-      </div>
+      <div class="quantity-upload-column quantity-upload-actions">
+        <div class="quantity-upload-action-row">
+          <button class="btn quantity-upload-action-btn" type="button" :disabled="isProcessing" @click="onProcess" aria-label="Download Updated Shopify CSV">
+            {{ isProcessing ? 'Processing…' : 'Download Updated CSV' }}
+          </button>
 
-      <div class="action-row action-row-quantity">
-        <button class="btn" type="button" :disabled="isProcessing" @click="onProcess">
-          {{ isProcessing ? 'Processing…' : 'Download Updated Shopify CSV' }}
-        </button>
-
-        <button class="btn secondary" type="button" :disabled="isPreviewLoading" @click="onPreview">
-          {{ isPreviewLoading ? 'Loading preview…' : 'Preview First 5 Rows' }}
-        </button>
+          <button class="btn secondary quantity-upload-action-btn" type="button" :disabled="isPreviewLoading" @click="onPreview">
+            {{ isPreviewLoading ? 'Loading preview…' : 'Preview First 5 Rows' }}
+          </button>
+        </div>
       </div>
     </div>
 
-    <p class="note function-panel">
+    <p class="note function-panel reveal-fade-up reveal-delay-2">
       <strong>What this function does:</strong><br>
       Matches <strong>Variant SKU</strong> in Shopify to SKU in Square, then updates <strong>Variant Inventory Qty</strong> using Square current quantity values.
     </p>
 
-    <p class="note">Uploads are processed locally. The script matches `Variant SKU` from Shopify to the SKU field in the Square file and replaces `Variant Inventory Qty` with the Square "current quantity" value (header containing the words "current quantity").</p>
+    <p class="note reveal-fade-up reveal-delay-3">Uploads are processed locally. The script matches `Variant SKU` from Shopify to the SKU field in the Square file and replaces `Variant Inventory Qty` with the Square "current quantity" value (header containing the words "current quantity").</p>
 
     <div v-if="hasPreview" class="preview-overlay" role="dialog" aria-modal="true" aria-labelledby="quantity-preview-title" @click.self="closePreview">
       <div class="preview-panel preview-dialog">
@@ -161,3 +165,162 @@ function closePreview() {
     </div>
   </div>
 </template>
+
+<style scoped>
+.quantity-upload-panel {
+  --quantity-control-width: 320px;
+  --quantity-label-offset: 24px;
+  margin-top: 16px;
+  width: 100%;
+  max-width: 840px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, var(--quantity-control-width)));
+  align-items: center;
+  justify-content: center;
+  column-gap: 28px;
+  row-gap: 10px;
+}
+
+.quantity-upload-panel > * {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.quantity-upload-column {
+  min-width: 0;
+  width: min(100%, var(--quantity-control-width));
+}
+
+.quantity-upload-files {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.quantity-upload-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+}
+
+.quantity-upload-row {
+  display: grid;
+  justify-items: stretch;
+  gap: 6px;
+  width: 100%;
+  max-width: none;
+}
+
+.quantity-upload-row > label:first-child {
+  min-width: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.quantity-upload-panel .file-control,
+.quantity-upload-action-row {
+  width: min(100%, var(--quantity-control-width));
+  max-width: min(100%, var(--quantity-control-width));
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.quantity-upload-panel .quantity-file-control {
+  width: min(100%, var(--quantity-control-width)) !important;
+  max-width: min(100%, var(--quantity-control-width)) !important;
+  min-width: 0;
+  margin: 0;
+  height: 40px;
+  min-height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+
+.quantity-upload-panel .quantity-file-control .file-btn {
+  height: 24px;
+}
+
+.quantity-upload-action-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(10px + var(--quantity-label-offset));
+  margin: 0;
+  padding-top: var(--quantity-label-offset);
+  padding-bottom: 0;
+}
+
+.quantity-upload-action-btn {
+  flex: 0 0 auto !important;
+  width: 100%;
+  max-width: none;
+  height: 40px;
+  min-height: 40px;
+  white-space: nowrap;
+  padding: 8px 14px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.quantity-upload-panel .file-name {
+  max-width: calc(100% - 110px);
+}
+
+@media (max-width: 900px) {
+  .quantity-upload-panel {
+    --quantity-control-width: min(100%, 420px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+    justify-items: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .quantity-upload-panel {
+    --quantity-control-width: min(320px, 100%);
+    --quantity-label-offset: 0px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .quantity-upload-column {
+    width: min(100%, var(--quantity-control-width));
+  }
+
+  .quantity-upload-panel .quantity-file-control,
+  .quantity-upload-action-btn {
+    min-width: 0;
+    width: min(100%, var(--quantity-control-width)) !important;
+    max-width: min(100%, var(--quantity-control-width)) !important;
+    box-sizing: border-box;
+    margin: 0 auto;
+  }
+
+  .quantity-upload-panel .file-name {
+    max-width: calc(100% - 110px);
+  }
+
+  .quantity-upload-action-row {
+    width: min(100%, var(--quantity-control-width));
+    max-width: min(100%, var(--quantity-control-width));
+    margin-top: 0;
+    gap: 8px;
+    padding-top: 0;
+  }
+
+  .quantity-upload-action-btn {
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+}
+</style>

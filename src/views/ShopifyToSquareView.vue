@@ -68,11 +68,11 @@ function closePreview() {
 <template>
   <div class="card spacious tool-card">
     <div class="hero">
-      <div class="hero-title">Shopify → Square CSV Converter</div>
-      <div class="hero-sub">Files processed locally in your browser.</div>
+      <div class="hero-title reveal-fade-up">Shopify → Square CSV Converter</div>
+      <div class="hero-sub reveal-fade-up reveal-delay-1">Files processed locally in your browser.</div>
     </div>
 
-    <div class="note instruction-panel">
+    <div class="note instruction-panel reveal-fade-up reveal-delay-1">
       <strong>Pre-Con Steps</strong>
       <ol>
         <li>Export Shopify inventory CSV.</li>
@@ -83,27 +83,27 @@ function closePreview() {
     </div>
 
     <div class="note-container tool-panel shopifytosquare-upload-row">
-      <label class="file-control">
+      <label class="file-control shopifytosquare-file-control">
         <span class="file-btn">Choose File</span>
         <span class="file-name">{{ fileName }}</span>
         <input type="file" accept=".csv,.xlsx,.xls" @change="onFileChange" />
       </label>
-      <div class="action-row">
-        <button class="btn" type="button" :disabled="isProcessing" @click="onConvert">
+      <div class="action-row shopifytosquare-action-row">
+        <button class="btn shopifytosquare-action-btn" type="button" :disabled="isProcessing" @click="onConvert">
           {{ isProcessing ? 'Processing…' : 'Download Square Ready CSV' }}
         </button>
-        <button class="btn secondary" type="button" :disabled="isPreviewLoading" @click="onPreview">
+        <button class="btn secondary shopifytosquare-action-btn" type="button" :disabled="isPreviewLoading" @click="onPreview">
           {{ isPreviewLoading ? 'Loading preview…' : 'Preview First 5 Rows' }}
         </button>
       </div>
     </div>
 
-    <div class="note function-panel">
+    <div class="note function-panel reveal-fade-up reveal-delay-2">
       <strong>What this function does:</strong><br>
       Reads the Shopify file and creates a Square-ready CSV mapped by key fields such as <strong>SKU</strong>, <strong>Handle</strong>, and other import-ready columns.
     </div>
 
-    <div class="note">
+    <div class="note reveal-fade-up reveal-delay-3">
       Select a Shopify CSV or Excel file exported from your store. The download will be a CSV file ready to import to Square.
     </div>
 
@@ -142,60 +142,89 @@ function closePreview() {
 
 <style scoped>
 .shopifytosquare-upload-row {
+  --shopify-control-width: 320px;
   margin-top: 16px;
   width: 100%;
+  max-width: 840px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, var(--shopify-control-width)));
+  align-items: center;
+  justify-content: center;
+  column-gap: 28px;
+  row-gap: 10px;
+}
+
+.shopifytosquare-upload-row > * {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin: 0;
 }
 
 .shopifytosquare-upload-row .file-control,
 .shopifytosquare-upload-row .action-row {
-  width: 100%;
-  max-width: 320px;
-  margin-left: auto;
-  margin-right: auto;
+  width: min(100%, var(--shopify-control-width));
+  max-width: min(100%, var(--shopify-control-width));
+  margin: 0;
+}
+
+.shopifytosquare-upload-row .shopifytosquare-file-control {
+  min-height: 40px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  box-sizing: border-box;
+}
+
+.shopifytosquare-upload-row .shopifytosquare-file-control .file-btn {
+  height: 24px;
 }
 
 .shopifytosquare-upload-row .action-row {
   flex-direction: column;
   align-items: stretch;
+  gap: 10px;
+  padding-top: 6px;
+  padding-bottom: 6px;
 }
 
 .shopifytosquare-upload-row .action-row .btn {
   flex: 0 0 auto;
   max-width: none;
   width: 100%;
+  min-height: 44px;
 }
 
 @media (max-width: 640px) {
   .shopifytosquare-upload-row {
-    display: grid;
-    justify-items: center;
-    gap: 4px;
-  }
-
-  .shopifytosquare-upload-row > * {
-    margin: 0;
-    min-width: 0;
-    flex: 0 0 auto;
-  }
-
-  .shopifytosquare-upload-row .file-control {
-    min-width: 0;
     width: 100%;
-    max-width: 320px;
-    margin-bottom: 0;
-    padding-top: 6px;
-    padding-bottom: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .shopifytosquare-upload-row .shopifytosquare-file-control,
+  .shopifytosquare-upload-row .shopifytosquare-action-btn {
+    min-width: 0;
+    width: min(100%, var(--shopify-control-width)) !important;
+    max-width: min(100%, var(--shopify-control-width)) !important;
+    box-sizing: border-box;
+    margin: 0 auto;
   }
 
   .shopifytosquare-upload-row .file-name {
     max-width: calc(100% - 110px);
   }
 
-  .shopifytosquare-upload-row .action-row {
-    display: grid;
-    max-width: 320px;
+  .shopifytosquare-upload-row .shopifytosquare-action-row {
+    width: min(100%, var(--shopify-control-width));
+    max-width: min(100%, var(--shopify-control-width));
     margin-top: 0;
-    gap: 6px;
+    gap: 8px;
+  }
+
+  .shopifytosquare-upload-row .shopifytosquare-action-btn {
+    min-width: 0;
+    flex: 0 0 auto;
   }
 }
 </style>

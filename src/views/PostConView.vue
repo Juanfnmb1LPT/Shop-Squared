@@ -130,8 +130,7 @@ function goBack() {
   }
 }
 
-function restartSteps() {
-  hasProcessed.value = false;
+function startOver() {
   currentStage.value = 0;
   resetPreview();
 }
@@ -181,10 +180,10 @@ function closePreview() {
 </script>
 
 <template>
-  <div class="card spacious quantity-card tool-card step-card postcon-stepper-card">
-    <div class="hero postcon-hero">
-      <div class="hero-title">{{ currentContent.title }}</div>
-      <div v-if="currentStage === 0" class="hero-sub postcon-subtitle">{{ currentContent.description }}</div>
+  <div class="card spacious quantity-card tool-card step-card guided-stepper-card postcon-stepper-card">
+    <div class="hero guided-step-hero postcon-hero">
+      <div class="hero-title reveal-fade-up">{{ currentContent.title }}</div>
+      <div v-if="currentStage === 0" class="hero-sub postcon-subtitle reveal-fade-up reveal-delay-1">{{ currentContent.description }}</div>
     </div>
 
     <div class="stepper-progress" aria-label="Post-conversion progress">
@@ -222,20 +221,20 @@ function closePreview() {
       </div>
     </div>
 
-    <div class="postcon-step-shell">
-      <div v-if="currentStage === 0" class="postcon-panel intro-panel">
-        <p class="postcon-copy">
+    <div class="guided-step-shell postcon-step-shell">
+      <div v-if="currentStage === 0" class="postcon-panel guided-step-panel intro-panel">
+        <p class="postcon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           This walkthrough keeps the quantity update process in sequence so you can move through it one action at a time.
         </p>
         <button class="btn" type="button" @click="goNext">Start Steps</button>
       </div>
 
-      <div v-else-if="currentStage === 1" class="postcon-panel">
+      <div v-else-if="currentStage === 1" class="postcon-panel guided-step-panel">
         <div class="postcon-step-number">01</div>
-        <p class="postcon-copy">
+        <p class="postcon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           Export the Square inventory CSV so you have the most recent quantity values ready for the update.
         </p>
-        <div class="postcon-visual-card" aria-label="Step 1 visual guide">
+        <div class="postcon-visual-card guided-visual-card" aria-label="Step 1 visual guide">
           <InfiniteCarousel
             :slides="stepVisuals[1]"
             label="Step 1 visual guide"
@@ -244,12 +243,12 @@ function closePreview() {
         </div>
       </div>
 
-      <div v-else-if="currentStage === 2" class="postcon-panel">
+      <div v-else-if="currentStage === 2" class="postcon-panel guided-step-panel">
         <div class="postcon-step-number">02</div>
-        <p class="postcon-copy">
+        <p class="postcon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           Export the Shopify inventory CSV so the Square quantities can be matched back to the correct Shopify SKUs.
         </p>
-        <div class="postcon-visual-card" aria-label="Step 2 visual guide">
+        <div class="postcon-visual-card guided-visual-card" aria-label="Step 2 visual guide">
           <InfiniteCarousel
             :slides="stepVisuals[2]"
             label="Step 2 visual guide"
@@ -258,25 +257,25 @@ function closePreview() {
         </div>
       </div>
 
-      <div v-else-if="currentStage === 3" class="postcon-panel">
+      <div v-else-if="currentStage === 3" class="postcon-panel guided-step-panel">
         <div class="postcon-step-number">03</div>
-        <div class="function-block postcon-function-block">
-          <p class="postcon-copy postcon-convert-copy">
+        <div class="function-block guided-function-block postcon-function-block">
+          <p class="postcon-copy guided-step-copy postcon-convert-copy reveal-fade-up reveal-delay-1">
             Upload both CSV files, review the preview if needed, then click <strong>Download Updated Shopify CSV</strong>.
           </p>
 
-          <div class="function-callout">
+          <div class="function-callout reveal-fade-up reveal-delay-2">
             <strong>What this function does:</strong>
             <br>
             Matches <strong>Variant SKU</strong> in Shopify to SKU in Square, then updates <strong>Variant Inventory Qty</strong> using Square's current quantity values.
           </div>
 
-          <p class="postcon-status" :class="{ 'is-ready': hasProcessed }">
+          <p class="postcon-status guided-step-status reveal-fade-up reveal-delay-3" :class="{ 'is-ready': hasProcessed }">
             {{ hasProcessed ? 'Updated Shopify CSV created. Continue with the final import step.' : 'Generate the updated Shopify CSV to complete this step.' }}
           </p>
 
-          <div class="note-container note-quantity postcon-upload-row">
-            <div class="quantity-row">
+          <div class="note-container postcon-upload-row postcon-upload-grid">
+            <div class="quantity-row postcon-upload-input-row">
               <label>Shopify CSV (old quantities):</label>
               <label class="file-control">
                 <span class="file-btn">Choose File</span>
@@ -285,7 +284,11 @@ function closePreview() {
               </label>
             </div>
 
-            <div class="quantity-row">
+            <button class="btn postcon-upload-button postcon-upload-button-download" type="button" :disabled="isProcessing" @click="onProcess">
+              {{ isProcessing ? 'Processing…' : 'Download Updated Shopify CSV' }}
+            </button>
+
+            <div class="quantity-row postcon-upload-input-row">
               <label>Square CSV (new quantities):</label>
               <label class="file-control">
                 <span class="file-btn">Choose File</span>
@@ -294,40 +297,35 @@ function closePreview() {
               </label>
             </div>
 
-            <div class="action-row action-row-quantity">
-              <button class="btn" type="button" :disabled="isProcessing" @click="onProcess">
-                {{ isProcessing ? 'Processing…' : 'Download Updated Shopify CSV' }}
-              </button>
-              <button class="btn secondary" type="button" :disabled="isPreviewLoading" @click="onPreview">
-                {{ isPreviewLoading ? 'Loading preview…' : 'Preview First 5 Rows' }}
-              </button>
-            </div>
+            <button class="btn secondary postcon-upload-button postcon-upload-button-preview" type="button" :disabled="isPreviewLoading" @click="onPreview">
+              {{ isPreviewLoading ? 'Loading preview…' : 'Preview First 5 Rows' }}
+            </button>
           </div>
 
         </div>
       </div>
 
-      <div v-else class="postcon-panel">
+      <div v-else class="postcon-panel guided-step-panel">
         <div class="postcon-step-number">04</div>
-        <p class="postcon-copy">
+        <p class="postcon-copy guided-step-copy reveal-fade-up reveal-delay-1">
           Import the newly created CSV into Shopify, then review the import summary and fix any issues before completing the update.
         </p>
-        <div class="postcon-visual-card" aria-label="Step 4 visual guide">
+        <div class="postcon-visual-card guided-visual-card" aria-label="Step 4 visual guide">
           <InfiniteCarousel
             :slides="stepVisuals[4]"
             label="Step 4 visual guide"
             dot-label-prefix="Show step 4 image"
           />
         </div>
-        <button class="btn" type="button" @click="restartSteps">Start Over</button>
+        <button class="btn" type="button" @click="startOver">Start Over</button>
       </div>
     </div>
 
-    <p v-if="currentStage === 3" class="postcon-disclaimer">
+    <p v-if="currentStage === 3" class="postcon-disclaimer guided-step-disclaimer reveal-fade-up reveal-delay-2">
       Make sure you download the updated Shopify CSV before clicking Next Step.
     </p>
 
-    <div v-if="currentStage > 0" class="postcon-actions">
+    <div v-if="currentStage > 0" class="postcon-actions guided-step-actions">
       <button class="btn secondary" type="button" :disabled="currentStage === 0" @click="goBack">
         Back
       </button>
@@ -375,142 +373,8 @@ function closePreview() {
 </template>
 
 <style scoped>
-.postcon-stepper-card {
-  display: flex;
-  flex-direction: column;
-  gap: 26px;
-}
-
-.postcon-hero {
-  padding-bottom: 0;
-}
-
 .postcon-subtitle {
   max-width: 680px;
-}
-
-.stepper-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 760px;
-  margin: 0 auto;
-  margin-top: -10px;
-  width: 100%;
-}
-
-.stepper-progress-meta {
-  display: flex;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #0b63d6;
-}
-
-.stepper-track-wrap {
-  --stepper-circle-size: 36px;
-  --stepper-track-height: 6px;
-  --stepper-track-offset: 4px;
-  position: relative;
-  padding: var(--stepper-track-offset) 4px 0;
-}
-
-.stepper-track,
-.stepper-track-fill {
-  position: absolute;
-  top: calc(var(--stepper-track-offset) + (var(--stepper-circle-size) - var(--stepper-track-height)) / 2);
-  left: 18px;
-  right: 18px;
-  height: var(--stepper-track-height);
-  border-radius: 999px;
-}
-
-.stepper-track {
-  background: rgba(18, 58, 138, 0.12);
-}
-
-.stepper-track-fill {
-  right: auto;
-  background: linear-gradient(90deg, #123a8a, #0ea5ff);
-  transition: width 0.22s ease;
-}
-
-.stepper-checkpoints {
-  position: relative;
-  display: grid;
-  gap: 16px;
-}
-
-.stepper-checkpoint {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.stepper-circle {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: #fff;
-  border: 3px solid rgba(18, 58, 138, 0.18);
-  color: #6b7280;
-  line-height: 1;
-  font-weight: 800;
-  box-shadow: 0 8px 22px rgba(14, 42, 99, 0.12);
-  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
-}
-
-.stepper-circle.is-active {
-  border-color: #0b63d6;
-  color: #0b63d6;
-  transform: translateY(-2px);
-}
-
-.stepper-circle.is-complete {
-  background: linear-gradient(135deg, #123a8a, #0ea5ff);
-  border-color: #0b63d6;
-  color: #fff;
-}
-
-.stepper-checkmark {
-  position: relative;
-  width: 10px;
-  height: 18px;
-  border-right: 3px solid currentColor;
-  border-bottom: 3px solid currentColor;
-  transform: rotate(45deg) translate(-1px, -2px);
-}
-
-.postcon-step-shell {
-  max-width: 760px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.postcon-panel {
-  min-height: 280px;
-  padding: 34px 30px;
-  border-radius: 22px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 249, 255, 0.96));
-  border: 1px solid rgba(11, 99, 214, 0.12);
-  box-shadow: 0 20px 44px rgba(14, 42, 99, 0.1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 18px;
-  text-align: center;
-}
-
-.intro-panel {
-  min-height: 240px;
 }
 
 .postcon-step-number {
@@ -521,244 +385,137 @@ function closePreview() {
   color: #0b63d6;
 }
 
-.postcon-copy {
-  margin: 0;
-  max-width: 560px;
-  font-size: 18px;
-  line-height: 1.65;
-  color: #0f1f46;
-}
-
-.postcon-visual-card {
-  width: min(100%, 420px);
-  margin-top: 8px;
-  padding: 12px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(11, 99, 214, 0.14);
-  box-shadow: 0 14px 32px rgba(14, 42, 99, 0.08);
-}
-
-.postcon-visual-frame-wrap {
-  position: relative;
-}
-
-.postcon-visual-frame {
-  display: flex;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  scrollbar-width: none;
-  touch-action: pan-x pinch-zoom;
-  aspect-ratio: 4 / 3;
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(240, 247, 255, 0.95), rgba(227, 238, 252, 0.9));
-  border: 1px solid rgba(18, 58, 138, 0.08);
-}
-
-.postcon-visual-frame::-webkit-scrollbar {
-  display: none;
-}
-
-.postcon-visual-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-width: 100%;
-  object-fit: cover;
-  object-position: top center;
-  scroll-snap-align: center;
-}
-
-.postcon-visual-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 12px;
-}
-
-.postcon-visual-nav {
-  position: absolute;
-  top: 50%;
-  z-index: 1;
-  width: 36px;
-  height: 36px;
-  aspect-ratio: 1 / 1;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.44);
-  border-radius: 999px;
-  background: rgba(10, 24, 55, 0.22);
-  backdrop-filter: blur(6px);
-  color: #123a8a;
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transform: translateY(-50%);
-}
-
-.postcon-visual-nav:hover {
-  background: rgba(10, 24, 55, 0.32);
-}
-
-.postcon-visual-nav span {
-  color: #fff;
-  transform: translateY(-1px);
-}
-
-.postcon-visual-nav.is-left {
-  left: 10px;
-}
-
-.postcon-visual-nav.is-right {
-  right: 10px;
-}
-
-.postcon-visual-dots {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.postcon-visual-dot {
-  width: 10px;
-  height: 10px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: rgba(18, 58, 138, 0.18);
-  cursor: pointer;
-  transition: transform 0.18s ease, background 0.18s ease;
-}
-
-.postcon-visual-dot.is-active {
-  background: #0b63d6;
-  transform: scale(1.15);
-}
-
 .postcon-convert-copy {
   max-width: 100%;
   margin-bottom: 6px;
 }
 
-.postcon-status {
-  margin: 14px 0 0;
-  color: #6b7280;
-  text-align: center;
-  font-weight: 600;
+.postcon-upload-grid {
+  --postcon-control-width: 320px;
+  --postcon-middle-gap: clamp(24px, 4vw, 44px);
+  width: min(100%, calc((2 * var(--postcon-control-width)) + var(--postcon-middle-gap)));
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, var(--postcon-control-width)));
+  align-items: start;
+  justify-content: center;
+  column-gap: var(--postcon-middle-gap);
+  row-gap: 10px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
 }
 
-.postcon-status.is-ready {
-  color: #0b63d6;
+.postcon-function-block .postcon-status + .postcon-upload-grid.note-container {
+  margin-top: 10px;
 }
 
-.postcon-disclaimer {
-  margin: 10px 0 0;
-  color: #7c5b12;
-  text-align: center;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.postcon-function-block {
+.postcon-upload-grid .quantity-row {
+  display: grid;
+  justify-items: stretch;
+  gap: 6px;
   width: 100%;
+  max-width: none;
   margin: 0;
+}
+
+.postcon-upload-input-row {
+  min-width: 0;
+}
+
+.postcon-upload-grid .quantity-row > label:first-child {
+  min-width: 0;
+  width: 100%;
   text-align: left;
 }
 
-.postcon-upload-row {
-  margin-top: 16px;
-}
-
-.postcon-upload-row .quantity-row {
+.postcon-upload-grid .file-control,
+.postcon-upload-button {
   width: 100%;
-  max-width: 540px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: none;
   min-width: 0;
+  margin: 0;
 }
 
-.postcon-upload-row .file-control {
-  flex: 1 1 300px;
-  min-width: 0;
+.postcon-upload-button {
+  align-self: end;
+  min-height: 40px;
+  height: 40px;
+  padding: 8px 14px;
+  font-size: 13px;
+  line-height: 1;
 }
 
-.postcon-upload-row .file-name {
+.postcon-upload-grid .file-name {
   max-width: calc(100% - 110px);
 }
 
-.postcon-actions {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
+@media (max-width: 760px) {
+  .postcon-upload-grid {
+    --postcon-control-width: min(320px, 100%);
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .postcon-upload-grid .quantity-row > label:first-child {
+    text-align: center;
+  }
+}
+
+@media (max-width: 1200px) {
+  .postcon-function-block {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .postcon-function-block .postcon-status + .postcon-upload-grid.note-container {
+    margin-top: 10px;
+  }
+
+  .postcon-upload-grid {
+    width: min(100%, 420px);
+    grid-template-columns: 1fr;
+    justify-items: center;
+    row-gap: 10px;
+  }
+
+  .postcon-upload-grid .postcon-upload-input-row:first-child {
+    order: 1;
+  }
+
+  .postcon-upload-grid .postcon-upload-input-row:last-of-type {
+    order: 2;
+  }
+
+  .postcon-upload-button-download {
+    order: 3;
+  }
+
+  .postcon-upload-button-preview {
+    order: 4;
+  }
+
+  .postcon-upload-grid .quantity-row > label:first-child {
+    text-align: center;
+  }
+
+  .postcon-upload-grid .file-control,
+  .postcon-upload-button {
+    width: 100%;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 @media (max-width: 640px) {
-  .stepper-track-wrap {
-    --stepper-circle-size: 30px;
+  .postcon-upload-grid {
+    gap: 4px;
   }
 
-  .stepper-track,
-  .stepper-track-fill {
-    left: 12px;
-    right: 12px;
-  }
-
-  .stepper-checkpoints {
-    gap: 8px;
-  }
-
-  .stepper-circle {
-    width: 30px;
-    height: 30px;
-    font-size: 12px;
-  }
-
-  .stepper-checkmark {
-    width: 8px;
-    height: 14px;
-    border-right-width: 2px;
-    border-bottom-width: 2px;
-  }
-
-  .postcon-panel {
-    min-height: 0;
-    padding: 24px 18px;
-  }
-
-  .postcon-copy {
-    font-size: 16px;
-  }
-
-  .postcon-visual-card {
-    padding: 12px;
-  }
-
-  .postcon-visual-frame {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .postcon-visual-nav {
-    width: 32px;
-    height: 32px;
-    font-size: 20px;
-  }
-
-  .postcon-actions {
-    flex-direction: column;
-  }
-
-  .postcon-upload-row .quantity-row {
-    max-width: 320px;
-  }
-
-  .postcon-upload-row .file-control {
-    width: 100%;
+  .postcon-upload-grid .file-control {
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
 }
 </style>

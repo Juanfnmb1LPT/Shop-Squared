@@ -1,9 +1,10 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import HomeView from '../views/HomeView.vue';
-import PreConView from '../views/PreConView.vue';
-import PostConView from '../views/PostConView.vue';
-import ShopifyToSquareView from '../views/ShopifyToSquareView.vue';
-import UpdateQuantityView from '../views/UpdateQuantityView.vue';
+
+const HomeView = () => import('../views/HomeView.vue');
+const PreConView = () => import('../views/PreConView.vue');
+const PostConView = () => import('../views/PostConView.vue');
+const ShopifyToSquareView = () => import('../views/ShopifyToSquareView.vue');
+const UpdateQuantityView = () => import('../views/UpdateQuantityView.vue');
 
 const router = createRouter({
     history: createWebHashHistory(),

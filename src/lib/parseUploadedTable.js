@@ -1,5 +1,4 @@
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 
 function normalizeCell(value) {
     if (value === null || value === undefined) return '';
@@ -18,6 +17,7 @@ function parseCsvFile(file) {
 }
 
 async function parseExcelFile(file) {
+    const XLSX = await import('xlsx');
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array', raw: false, cellDates: false });
     const firstSheetName = workbook.SheetNames?.[0];
