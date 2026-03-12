@@ -43,7 +43,7 @@ async function loadBinDetail() {
     if (itemIds.length) {
       const { data: variationData, error: variationError } = await supabase
         .from('item_variations')
-        .select('item_id, item_name, quantity, sku, color, style, size')
+        .select('item_id, item_name, quantity, sku, color, style, size, price')
         .in('item_id', itemIds)
         .order('item_name', { ascending: true });
 
@@ -75,6 +75,13 @@ function toggleItem(itemId) {
     ...expandedItems.value,
     [itemId]: !expandedItems.value[itemId]
   };
+}
+
+function formatPrice(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const n = Number(value);
+  if (Number.isNaN(n)) return String(value);
+  return n.toFixed(2);
 }
 
 function itemVariations(itemId) {
@@ -118,6 +125,7 @@ onMounted(loadBinDetail);
                 <div v-for="variation in itemVariations(item.id)" :key="`${item.id}-${variation.sku}-${variation.size}-${variation.color}`" class="inventory-variation-card">
                   <div><strong>SKU:</strong> {{ variation.sku || '—' }}</div>
                   <div><strong>Quantity:</strong> {{ variation.quantity ?? '—' }}</div>
+                  <div><strong>Price:</strong> {{ formatPrice(variation.price) }}</div>
                   <div><strong>Color:</strong> {{ variation.color || '—' }}</div>
                   <div><strong>Style:</strong> {{ variation.style || '—' }}</div>
                   <div><strong>Size:</strong> {{ variation.size || '—' }}</div>
