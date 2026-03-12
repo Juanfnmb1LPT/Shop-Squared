@@ -73,6 +73,43 @@ function sortVariations(variations) {
   });
 }
 
+function normalizeQuantityTotal(value, fallback = 0) {
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : fallback;
+}
+
+async function fetchBinRecord() {
+  const withTotalsResult = await supabase
+    .from('bins')
+    .select('id, name, total_quantity')
+    .eq('id', binId.value)
+    .maybeSingle();
+
+  if (withTotalsResult.error && /total_quantity|column/i.test(withTotalsResult.error.message || '')) {
+    return supabase.from('bins').select('id, name').eq('id', binId.value).maybeSingle();
+  }
+
+  return withTotalsResult;
+}
+
+async function fetchItemsForBin() {
+  const withTotalsResult = await supabase
+    .from('items')
+    .select('id, name, bin_id, total_quantity')
+    .eq('bin_id', binId.value)
+    .order('name', { ascending: true });
+
+  if (withTotalsResult.error && /total_quantity|column/i.test(withTotalsResult.error.message || '')) {
+    return supabase
+      .from('items')
+      .select('id, name, bin_id')
+      .eq('bin_id', binId.value)
+      .order('name', { ascending: true });
+  }
+
+  return withTotalsResult;
+}
+
 async function loadBinDetail(options = {}) {
   const expandedItemIds = Array.isArray(options.expandedItemIds) ? options.expandedItemIds : [];
 
@@ -91,8 +128,8 @@ async function loadBinDetail(options = {}) {
     { data: itemData, error: itemError }
   ] = await Promise.all([
     supabase.from('bins').select('id, name').order('name', { ascending: true }),
-    supabase.from('bins').select('id, name').eq('id', binId.value).maybeSingle(),
-    supabase.from('items').select('id, name, bin_id').eq('bin_id', binId.value).order('name', { ascending: true })
+    fetchBinRecord(),
+    fetchItemsForBin(),
   ]);
 
   if (binOptionsError || binError || itemError) {
@@ -103,8 +140,11 @@ async function loadBinDetail(options = {}) {
     variationsByItemId.value = {};
     expandedItems.value = {};
   } else {
-    bin.value = binData;
-    items.value = itemData || [];
+    bin.value = binData ? { ...binData } : null;
+    items.value = (itemData || []).map((item) => ({
+      ...item,
+      total_quantity: normalizeQuantityTotal(item.total_quantity),
+    }));
     availableBins.value = binOptionsData || [];
 
     const itemIds = (itemData || []).map((item) => item.id);
@@ -127,6 +167,17 @@ async function loadBinDetail(options = {}) {
           groupedVariations[variation.item_id].push(variation);
           return groupedVariations;
         }, {});
+
+        const itemTotalsById = (variationData || []).reduce((groupedTotals, variation) => {
+          const previousTotal = groupedTotals[variation.item_id] || 0;
+          groupedTotals[variation.item_id] = previousTotal + normalizeQuantityTotal(variation.quantity);
+          return groupedTotals;
+        }, {});
+
+        items.value = items.value.map((item) => ({
+          ...item,
+          total_quantity: itemTotalsById[item.id] ?? normalizeQuantityTotal(item.total_quantity),
+        }));
       }
 
         Object.keys(variationsByItemId.value).forEach((itemId) => {
@@ -134,6 +185,18 @@ async function loadBinDetail(options = {}) {
         });
     } else {
       variationsByItemId.value = {};
+    }
+
+    const computedBinTotal = items.value.reduce(
+      (runningTotal, item) => runningTotal + normalizeQuantityTotal(item.total_quantity),
+      0,
+    );
+
+    if (bin.value) {
+      bin.value = {
+        ...bin.value,
+        total_quantity: normalizeQuantityTotal(bin.value.total_quantity, computedBinTotal),
+      };
     }
 
     expandedItems.value = expandedItemIds.reduce((groupedExpandedItems, itemId) => {
@@ -434,6 +497,7 @@ onMounted(loadBinDetail);
         <div>
           <div class="inventory-detail-kicker">Search Inventory</div>
           <div class="hero-title inventory-detail-title">{{ bin.name }}</div>
+          <div class="inventory-detail-qty">Total quantity: {{ bin.total_quantity ?? 0 }}</div>
         </div>
 
         <div class="inventory-detail-header-actions">
@@ -457,7 +521,10 @@ onMounted(loadBinDetail);
           <div v-for="item in items" :key="item.id" class="inventory-item-card">
             <div class="inventory-item-header">
               <button class="inventory-item-toggle" type="button" @click="toggleItem(item.id)">
-                <span class="inventory-item-name">{{ item.name }}</span>
+                <span class="inventory-item-name-shell">
+                  <span class="inventory-item-name">{{ item.name }}</span>
+                  <span class="inventory-item-total">Total: {{ item.total_quantity ?? 0 }}</span>
+                </span>
                 <span class="inventory-item-toggle-label">
                   {{ expandedItems[item.id] ? 'Hide variations' : 'Show variations' }}
                 </span>
@@ -664,6 +731,13 @@ onMounted(loadBinDetail);
   text-align: left;
 }
 
+.inventory-detail-qty {
+  margin-top: 6px;
+  text-align: left;
+  font-weight: 700;
+  color: #0f1f46;
+}
+
 .inventory-detail-subtitle {
   text-align: left;
 }
@@ -749,6 +823,18 @@ onMounted(loadBinDetail);
 .inventory-item-name {
   font-size: 18px;
   font-weight: 700;
+}
+
+.inventory-item-name-shell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.inventory-item-total {
+  font-size: 13px;
+  font-weight: 700;
+  color: #33578f;
 }
 
 .inventory-item-toggle-label {
