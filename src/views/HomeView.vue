@@ -1,8 +1,12 @@
 <template>
   <div class="card spacious tool-card home-card">
     <div class="hero">
-      <div class="hero-title">CSV Converter Dashboard</div>
+      <div class="hero-title">Inventory Management Dashboard</div>
       <p class="home-sub-large">Choose a guided flow for the standard process, or jump straight to the individual tools if you already know what you need.</p>
+    </div>
+
+    <div class="home-primary-action">
+      <router-link class="btn" to="/search-inventory">Search Inventory</router-link>
     </div>
 
     <div class="home-grid">
@@ -47,6 +51,12 @@
   font-weight: 300;
   color: #0b2545;
   animation: home-fade-up 0.5s ease 0.08s both;
+}
+
+.home-primary-action {
+  display: flex;
+  justify-content: center;
+  animation: home-fade-up 0.5s ease 0.12s both;
 }
 
 .home-options {

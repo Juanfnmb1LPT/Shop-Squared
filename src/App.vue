@@ -33,7 +33,7 @@ function handleLogout() {
     <header v-if="shouldShowShell" class="mobile-topbar">
       <div class="mobile-topbar-brand">
         <img :src="logoUrl" alt="LPT Realty logo" width="44" height="44" />
-        <div class="mobile-topbar-title">CSV Converter</div>
+        <div class="mobile-topbar-title">Shop²</div>
       </div>
 
       <button
@@ -53,7 +53,7 @@ function handleLogout() {
       <div class="dashboard-header">
         <div class="dashboard-brand">
           <img :src="logoUrl" alt="LPT Realty logo" width="88" height="88" />
-          <div class="dashboard-title">CSV Converter</div>
+          <div class="dashboard-title">Shop²</div>
         </div>
 
         <button
