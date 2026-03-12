@@ -54,6 +54,25 @@ const variationDeleteMessage = ref('');
 
 const binId = computed(() => route.params.id);
 
+const sizeOrder = { XXS: 0, XS: 1, S: 2, M: 3, L: 4, XL: 5, XXL: 6 };
+
+function sortVariations(variations) {
+  return [...variations].sort((a, b) => {
+    const aSize = a.size || '';
+    const bSize = b.size || '';
+    const aSizeIndex = sizeOrder[aSize] ?? 999;
+    const bSizeIndex = sizeOrder[bSize] ?? 999;
+
+    if (aSizeIndex !== bSizeIndex) {
+      return aSizeIndex - bSizeIndex;
+    }
+
+    const aSku = a.sku || '';
+    const bSku = b.sku || '';
+    return aSku.localeCompare(bSku);
+  });
+}
+
 async function loadBinDetail(options = {}) {
   const expandedItemIds = Array.isArray(options.expandedItemIds) ? options.expandedItemIds : [];
 
@@ -94,8 +113,7 @@ async function loadBinDetail(options = {}) {
       const { data: variationData, error: variationError } = await supabase
         .from('item_variations')
         .select('id, item_id, item_name, quantity, price, sku, color, style, size')
-        .in('item_id', itemIds)
-        .order('sku', { ascending: true });
+        .in('item_id', itemIds);
 
       if (variationError) {
         errorMessage.value = variationError.message;
@@ -110,6 +128,10 @@ async function loadBinDetail(options = {}) {
           return groupedVariations;
         }, {});
       }
+
+        Object.keys(variationsByItemId.value).forEach((itemId) => {
+          variationsByItemId.value[itemId] = sortVariations(variationsByItemId.value[itemId]);
+        });
     } else {
       variationsByItemId.value = {};
     }

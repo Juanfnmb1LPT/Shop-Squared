@@ -63,8 +63,8 @@ function onSubmit() {
         quantity: Number(formQuantity.value),
         price: formPrice.value === '' ? 0 : Number(formPrice.value),
         color: formColor.value.trim(),
-        style: formStyle.value.trim(),
-        size: formSize.value.trim(),
+        style: formStyle.value === '' ? null : formStyle.value.trim(),
+        size: formSize.value === '' ? null : formSize.value.trim(),
     });
 }
 </script>
@@ -130,24 +130,33 @@ function onSubmit() {
                     />
 
                     <label class="entity-modal-label" for="variation-form-style">Style</label>
-                    <input
+                    <select
                         id="variation-form-style"
                         v-model="formStyle"
                         class="entity-modal-input"
-                        type="text"
-                        autocomplete="off"
                         :disabled="isSaving"
-                    />
+                    >
+                        <option value="">—</option>
+                        <option value="Mens">Mens</option>
+                        <option value="Womens">Womens</option>
+                    </select>
 
                     <label class="entity-modal-label" for="variation-form-size">Size</label>
-                    <input
+                    <select
                         id="variation-form-size"
                         v-model="formSize"
                         class="entity-modal-input"
-                        type="text"
-                        autocomplete="off"
                         :disabled="isSaving"
-                    />
+                    >
+                        <option value="">—</option>
+                        <option value="XXS">XXS</option>
+                        <option value="XS">XS</option>
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="XXL">XXL</option>
+                    </select>
 
                     <p v-if="validationError" class="entity-modal-error" role="alert">{{ validationError }}</p>
                     <p v-if="errorMessage" class="entity-modal-error" role="alert">{{ errorMessage }}</p>
@@ -257,7 +266,8 @@ function onSubmit() {
     font-size: 15px;
 }
 
-.entity-modal-input:focus {
+.entity-modal-input:focus,
+.entity-modal-input select:focus {
     outline: 2px solid rgba(14, 165, 255, 0.22);
     border-color: rgba(37, 99, 235, 0.28);
 }
