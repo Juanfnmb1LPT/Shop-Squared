@@ -13,6 +13,8 @@ All parsing and processing runs locally in the browser. No file data is uploaded
 - Excel uploads use the first sheet and first row as headers, then flatten to row-based data
 - Client-side parsing via PapaParse (CSV) and SheetJS (Excel)
 - Search Inventory with QR scan support for bin lookup and auto-navigation
+- Bin CRUD from Search Inventory
+- Item and variation CRUD from the Bin Detail page
 
 ## Run locally
 
@@ -68,16 +70,7 @@ Routing uses hash mode (`/#/`) so direct page refresh works on GitHub Pages with
 - `/#/shopify-to-square` Shopify → Square tool
 - `/#/update-quantity` Update Shopify quantity tool
 - `/#/search-inventory` Search inventory page
-- `/#/search-inventory/:id` Bin detail page
-
-## QR scanning for bins
-
-- Use the camera button on Search Inventory to scan a physical bin QR label.
-- Use the `Print QR Label` action on each bin card in Search Inventory to generate printable labels.
-- QR payload should be the plain bin ID only (example: `bin-1`), not a full URL.
-- On successful scan, the app fills the search input and auto-navigates when an exact bin ID match is found.
-- If there is no exact match, the scan result remains in the search box so users can pick from filtered results.
-- Camera access requires a secure context in production (HTTPS). `localhost` works during development.
+- `/#/search-inventory/:id` Bin detail and item/variation management page
 
 The app uses a persistent left dashboard for navigation between all pages.
 
@@ -88,9 +81,14 @@ The app uses a persistent left dashboard for navigation between all pages.
 - `src/views/PostConView.vue` Post-conversion checklist page
 - `src/views/ShopifyToSquareView.vue` Shopify → Square UI
 - `src/views/UpdateQuantityView.vue` Quantity update UI
+- `src/views/SearchInventoryView.vue` Bin search and bin CRUD UI
+- `src/views/BinDetailView.vue` Bin detail plus item and variation CRUD UI
 - `src/lib/convertShopToSquare.js` Shopify → Square transformation logic
 - `src/lib/updateInventoryFromSquare.js` Quantity sync logic
 - `src/lib/downloadCsv.js` Browser CSV download helper
+- `src/lib/binCrud.js` Bin CRUD helpers
+- `src/lib/itemCrud.js` Item CRUD helpers
+- `src/lib/variationCrud.js` Variation CRUD helpers
 - `src/router/index.js` Vue Router setup
 - `styles.css` Shared styling
 
