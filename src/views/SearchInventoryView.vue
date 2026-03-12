@@ -1,11 +1,211 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { Html5Qrcode } from 'html5-qrcode';
+import QRCode from 'qrcode';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 
+const router = useRouter();
 const searchTerm = ref('');
 const bins = ref([]);
 const isLoading = ref(true);
 const errorMessage = ref('');
+const isScanning = ref(false);
+const scannerError = ref('');
+const qrPrintError = ref('');
+const printingBinId = ref('');
+
+let scannerInstance = null;
+let hasHandledDecode = false;
+
+function normalizeValue(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+async function stopScan() {
+  if (!scannerInstance) {
+    isScanning.value = false;
+    hasHandledDecode = false;
+    return;
+  }
+
+  try {
+    await scannerInstance.stop();
+  } catch {
+    // Ignore stop errors when scanner is already inactive.
+  }
+
+  try {
+    await scannerInstance.clear();
+  } catch {
+    // Ignore clear errors if scanner did not fully initialize.
+  }
+
+  scannerInstance = null;
+  isScanning.value = false;
+  hasHandledDecode = false;
+}
+
+async function handleDecodedText(decodedText) {
+  if (hasHandledDecode) {
+    return;
+  }
+
+  hasHandledDecode = true;
+  const scannedValue = String(decodedText || '').trim();
+
+  if (!scannedValue) {
+    hasHandledDecode = false;
+    return;
+  }
+
+  searchTerm.value = scannedValue;
+  await stopScan();
+
+  const matchedBin = bins.value.find((bin) => normalizeValue(bin.id) === normalizeValue(scannedValue));
+
+  if (matchedBin) {
+    router.push(`/search-inventory/${matchedBin.id}`);
+  }
+}
+
+async function startScan() {
+  scannerError.value = '';
+
+  if (isScanning.value) {
+    return;
+  }
+
+  if (!window.isSecureContext) {
+    scannerError.value = 'Camera scanning requires HTTPS or localhost.';
+    return;
+  }
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    scannerError.value = 'This browser does not support camera access for scanning.';
+    return;
+  }
+
+  const scannerTargetId = 'qr-reader';
+  isScanning.value = true;
+  hasHandledDecode = false;
+  await nextTick();
+
+  scannerInstance = new Html5Qrcode(scannerTargetId);
+
+  try {
+    await scannerInstance.start(
+      { facingMode: 'environment' },
+      {
+        fps: 10,
+        qrbox: { width: 260, height: 260 },
+      },
+      (decodedText) => {
+        handleDecodedText(decodedText);
+      }
+    );
+  } catch (error) {
+    scannerError.value = error?.message || 'Unable to start camera scanning.';
+    await stopScan();
+  }
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+async function printBinQr(bin) {
+  qrPrintError.value = '';
+  printingBinId.value = String(bin.id || '');
+
+  try {
+    const qrDataUrl = await QRCode.toDataURL(String(bin.id || ''), {
+      width: 320,
+      margin: 1,
+      errorCorrectionLevel: 'M'
+    });
+
+    const printWindow = window.open('', '_blank', 'width=540,height=700');
+
+    if (!printWindow) {
+      throw new Error('Popup blocked. Allow popups to print QR labels.');
+    }
+
+    const safeName = escapeHtml(bin.name || bin.id);
+    const safeId = escapeHtml(bin.id);
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Bin QR - ${safeId}</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 24px;
+              font-family: Arial, sans-serif;
+              color: #0f172a;
+            }
+            .label {
+              border: 2px solid #0f172a;
+              border-radius: 12px;
+              max-width: 420px;
+              margin: 0 auto;
+              padding: 20px;
+              text-align: center;
+            }
+            .title {
+              font-size: 22px;
+              font-weight: 700;
+              margin-bottom: 8px;
+            }
+            .subtitle {
+              font-size: 14px;
+              margin-bottom: 16px;
+              color: #334155;
+            }
+            img {
+              width: 300px;
+              height: 300px;
+              display: block;
+              margin: 0 auto 12px;
+            }
+            .bin-id {
+              font-size: 18px;
+              font-weight: 700;
+              letter-spacing: 0.06em;
+            }
+          </style>
+        </head>
+        <body>
+          <main class="label">
+            <div class="title">${safeName}</div>
+            <div class="subtitle">Inventory Bin Label</div>
+            <img src="${qrDataUrl}" alt="QR code for ${safeId}" />
+            <div class="bin-id">${safeId}</div>
+          </main>
+          <script>
+            window.onload = function () {
+              window.print();
+            };
+          <\/script>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+  } catch (error) {
+    qrPrintError.value = error?.message || 'Unable to generate printable QR label.';
+  } finally {
+    printingBinId.value = '';
+  }
+}
 
 const filteredBins = computed(() => {
   const normalizedQuery = searchTerm.value.trim().toLowerCase();
@@ -62,6 +262,7 @@ async function loadBins() {
 }
 
 onMounted(loadBins);
+onUnmounted(stopScan);
 </script>
 
 <template>
@@ -75,13 +276,35 @@ onMounted(loadBins);
 
     <div class="inventory-search-panel reveal-fade-up reveal-delay-1">
       <label class="inventory-search-label" for="inventory-search-input">Search bins</label>
-      <input
-        id="inventory-search-input"
-        v-model="searchTerm"
-        class="inventory-search-input"
-        type="search"
-        placeholder="Try bin-1 or Bin 1"
-      />
+
+      <div class="inventory-search-row">
+        <input
+          id="inventory-search-input"
+          v-model="searchTerm"
+          class="inventory-search-input"
+          type="search"
+          placeholder="Try bin-1 or Bin 1"
+        />
+
+        <button
+          class="inventory-scan-button"
+          type="button"
+          :aria-label="isScanning ? 'Stop QR scanner' : 'Start QR scanner'"
+          @click="isScanning ? stopScan() : startScan()"
+        >
+          <span class="inventory-scan-icon" aria-hidden="true">CAM</span>
+          <span>{{ isScanning ? 'Stop' : 'Scan' }}</span>
+        </button>
+      </div>
+
+      <p class="inventory-search-help">Scan a printed bin QR code to jump directly to that bin.</p>
+
+      <p v-if="scannerError" class="inventory-scan-error">{{ scannerError }}</p>
+      <p v-if="qrPrintError" class="inventory-scan-error">{{ qrPrintError }}</p>
+
+      <div v-if="isScanning" class="inventory-scanner-panel">
+        <div id="qr-reader" class="inventory-scanner-reader"></div>
+      </div>
     </div>
 
     <div class="inventory-grid reveal-fade-up reveal-delay-2">
@@ -93,21 +316,33 @@ onMounted(loadBins);
         {{ errorMessage }}
       </div>
 
-      <router-link
+      <article
         v-for="bin in filteredBins"
         :key="bin.id"
         class="inventory-bin-card"
-        :to="`/search-inventory/${bin.id}`"
       >
-        <div class="inventory-bin-name">{{ bin.name }}</div>
+        <router-link class="inventory-bin-link" :to="`/search-inventory/${bin.id}`">
+          <div class="inventory-bin-name">{{ bin.name }}</div>
 
-        <div class="inventory-bin-summary">Items:</div>
+          <div class="inventory-bin-summary">Items:</div>
 
-        <ul class="inventory-preview-list">
-          <li v-for="item in bin.items" :key="item.id">{{ item.name }}</li>
-          <li v-if="!bin.items.length" class="inventory-preview-empty">No items in this bin.</li>
-        </ul>
-      </router-link>
+          <ul class="inventory-preview-list">
+            <li v-for="item in bin.items" :key="item.id">{{ item.name }}</li>
+            <li v-if="!bin.items.length" class="inventory-preview-empty">No items in this bin.</li>
+          </ul>
+        </router-link>
+
+        <div class="inventory-bin-actions">
+          <button
+            class="inventory-print-button"
+            type="button"
+            :disabled="printingBinId === String(bin.id)"
+            @click="printBinQr(bin)"
+          >
+            {{ printingBinId === String(bin.id) ? 'Preparing label...' : 'Print QR Label' }}
+          </button>
+        </div>
+      </article>
 
       <div v-if="!isLoading && !errorMessage && !filteredBins.length" class="inventory-empty-state">
         No bins matched that search.
@@ -145,8 +380,14 @@ onMounted(loadBins);
   color: #0b63d6;
 }
 
+.inventory-search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .inventory-search-input {
-  width: 100%;
+  flex: 1;
   min-height: 50px;
   padding: 12px 16px;
   border: 1px solid rgba(18, 58, 138, 0.12);
@@ -154,6 +395,69 @@ onMounted(loadBins);
   background: rgba(244, 248, 255, 0.96);
   color: #082145;
   font: inherit;
+}
+
+.inventory-scan-button {
+  min-height: 50px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(18, 58, 138, 0.18);
+  border-radius: 14px;
+  background: rgba(233, 241, 255, 0.9);
+  color: #0a2b67;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inventory-scan-icon {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.inventory-scan-button:hover {
+  border-color: rgba(37, 99, 235, 0.32);
+  background: rgba(215, 230, 255, 0.95);
+}
+
+.inventory-search-help {
+  margin: 10px 0 0;
+  text-align: left;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.inventory-scan-error {
+  margin: 10px 0 0;
+  text-align: left;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.inventory-scanner-panel {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(18, 58, 138, 0.12);
+  background: rgba(244, 248, 255, 0.78);
+}
+
+.inventory-scanner-reader {
+  width: 100%;
+}
+
+:deep(#qr-reader) {
+  border: 0 !important;
+}
+
+:deep(#qr-reader__dashboard) {
+  padding: 8px 0 0;
+}
+
+:deep(#qr-reader__status_span) {
+  color: #082145;
+  font-weight: 600;
 }
 
 .inventory-search-input:focus {
@@ -181,16 +485,44 @@ onMounted(loadBins);
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.inventory-bin-link {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   color: inherit;
   text-decoration: none;
   transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
 }
 
-.inventory-bin-card:hover {
+.inventory-bin-link:hover {
   transform: translateY(-4px);
   border-color: rgba(37, 99, 235, 0.2);
   background: rgba(231, 239, 255, 0.92);
   box-shadow: 0 20px 38px rgba(14, 42, 99, 0.1);
+}
+
+.inventory-bin-actions {
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.inventory-print-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(18, 58, 138, 0.2);
+  background: rgba(230, 240, 255, 0.95);
+  color: #0a2b67;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inventory-print-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .inventory-bin-name {
@@ -226,6 +558,15 @@ onMounted(loadBins);
 }
 
 @media (max-width: 900px) {
+  .inventory-search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inventory-scan-button {
+    justify-content: center;
+  }
+
   .inventory-grid {
     grid-template-columns: 1fr;
   }

@@ -12,7 +12,9 @@
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.99.1",
+        "html5-qrcode": "^2.3.8",
         "papaparse": "^5.5.3",
+        "qrcode": "^1.5.4",
         "vue": "^3.5.18",
         "vue-router": "^4.5.1",
         "xlsx": "^0.18.5"
