@@ -12,12 +12,20 @@ const props = defineProps({
 
 const emit = defineEmits(['submit', 'cancel']);
 
+const ALL_SIZES = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
 const formName = ref('');
 const formBinId = ref('');
 const formBinQuery = ref('');
 const isBinListOpen = ref(false);
 const validationError = ref('');
 const nameInput = ref(null);
+
+const formBaseSku = ref('');
+const selectedSizes = ref([]);
+const formPrice = ref('');
+const formColor = ref('');
+const formStyle = ref('');
 
 const dialogTitle = computed(() => (props.mode === 'create' ? 'Create Item' : 'Edit Item'));
 const selectedBin = computed(() => props.bins.find((bin) => bin.id === formBinId.value) || null);
@@ -39,6 +47,12 @@ const submitLabel = computed(() => {
     }
 
     return props.mode === 'create' ? 'Create Item' : 'Save Changes';
+});
+
+const skuPreviewList = computed(() => {
+    const base = formBaseSku.value.trim();
+    if (!base || !selectedSizes.value.length) return [];
+    return selectedSizes.value.map((size) => `${base}-${size}`);
 });
 
 onMounted(async () => {
@@ -103,6 +117,14 @@ function selectBin(bin) {
     validationError.value = '';
 }
 
+function toggleSize(size) {
+    if (selectedSizes.value.includes(size)) {
+        selectedSizes.value = selectedSizes.value.filter((s) => s !== size);
+    } else {
+        selectedSizes.value = ALL_SIZES.filter((s) => selectedSizes.value.includes(s) || s === size);
+    }
+}
+
 function onSubmit() {
     validationError.value = '';
 
@@ -116,10 +138,20 @@ function onSubmit() {
         return;
     }
 
-    emit('submit', {
+    const payload = {
         name: formName.value.trim(),
         binId: String(formBinId.value).trim(),
-    });
+    };
+
+    if (props.mode === 'create') {
+        payload.sizes = selectedSizes.value;
+        payload.baseSku = formBaseSku.value.trim();
+        payload.price = formPrice.value === '' ? 0 : Number(formPrice.value);
+        payload.color = formColor.value.trim();
+        payload.style = formStyle.value || null;
+    }
+
+    emit('submit', payload);
 }
 </script>
 
@@ -193,6 +225,90 @@ function onSubmit() {
                         </div>
                     </div>
 
+                    <!-- Variation generation — create mode only -->
+                    <template v-if="mode === 'create'">
+                        <div class="variation-gen-divider">
+                            <span>Generate Variations</span>
+                            <span class="variation-gen-optional">optional</span>
+                        </div>
+
+                        <label class="entity-modal-label" for="item-form-base-sku">Base SKU</label>
+                        <input
+                            id="item-form-base-sku"
+                            v-model="formBaseSku"
+                            class="entity-modal-input"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="e.g. TSHIRT-BLK"
+                            :disabled="isSaving"
+                        />
+
+                        <label class="entity-modal-label">Sizes</label>
+                        <div class="size-chips">
+                            <button
+                                v-for="size in ALL_SIZES"
+                                :key="size"
+                                type="button"
+                                class="size-chip"
+                                :class="{ active: selectedSizes.includes(size) }"
+                                :disabled="isSaving"
+                                @click="toggleSize(size)"
+                            >
+                                {{ size }}
+                            </button>
+                        </div>
+
+                        <div v-if="skuPreviewList.length" class="sku-preview">
+                            <span
+                                v-for="(sku, i) in skuPreviewList"
+                                :key="sku"
+                            >{{ sku }}<span v-if="i < skuPreviewList.length - 1" class="sku-preview-sep"> · </span></span>
+                        </div>
+
+                        <template v-if="selectedSizes.length">
+                            <div class="variation-shared-grid">
+                                <div>
+                                    <label class="entity-modal-label" for="item-form-price">Price</label>
+                                    <input
+                                        id="item-form-price"
+                                        v-model="formPrice"
+                                        class="entity-modal-input"
+                                        type="number"
+                                        inputmode="decimal"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        :disabled="isSaving"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="entity-modal-label" for="item-form-style">Style</label>
+                                    <select
+                                        id="item-form-style"
+                                        v-model="formStyle"
+                                        class="entity-modal-input"
+                                        :disabled="isSaving"
+                                    >
+                                        <option value="">—</option>
+                                        <option value="Mens">Mens</option>
+                                        <option value="Womens">Womens</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <label class="entity-modal-label" for="item-form-color">Color</label>
+                            <input
+                                id="item-form-color"
+                                v-model="formColor"
+                                class="entity-modal-input"
+                                type="text"
+                                autocomplete="off"
+                                placeholder="e.g. Black"
+                                :disabled="isSaving"
+                            />
+                        </template>
+                    </template>
+
                     <p v-if="validationError" class="entity-modal-error" role="alert">{{ validationError }}</p>
                     <p v-if="errorMessage" class="entity-modal-error" role="alert">{{ errorMessage }}</p>
 
@@ -226,6 +342,8 @@ function onSubmit() {
 .entity-modal-dialog {
     width: 100%;
     max-width: 460px;
+    max-height: 90vh;
+    overflow-y: auto;
     padding: 28px 28px 24px;
     border-radius: 20px;
     background: #ffffff;
@@ -359,5 +477,102 @@ function onSubmit() {
     gap: 10px;
     justify-content: flex-end;
     margin-top: 10px;
+}
+
+/* Variation generation section */
+
+.variation-gen-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(18, 58, 138, 0.1);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #082145;
+}
+
+.variation-gen-optional {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+    text-transform: uppercase;
+    background: rgba(18, 58, 138, 0.06);
+    padding: 2px 7px;
+    border-radius: 20px;
+}
+
+.size-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.size-chip {
+    height: 38px;
+    min-width: 48px;
+    padding: 0 12px;
+    border: 1px solid rgba(18, 58, 138, 0.2);
+    border-radius: 10px;
+    background: rgba(244, 248, 255, 0.96);
+    color: #4b5563;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.size-chip:hover:not(:disabled) {
+    background: rgba(11, 99, 214, 0.08);
+    border-color: rgba(11, 99, 214, 0.3);
+    color: #0b63d6;
+}
+
+.size-chip.active {
+    background: #0b63d6;
+    border-color: #0b63d6;
+    color: #ffffff;
+}
+
+.size-chip.active:hover:not(:disabled) {
+    background: #0952b3;
+    border-color: #0952b3;
+}
+
+.size-chip:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.sku-preview {
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(11, 99, 214, 0.05);
+    border: 1px solid rgba(11, 99, 214, 0.12);
+    font-size: 13px;
+    font-weight: 600;
+    color: #082145;
+    word-break: break-all;
+    line-height: 1.6;
+}
+
+.sku-preview-sep {
+    color: #9ca3af;
+}
+
+.variation-shared-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+}
+
+.variation-shared-grid .entity-modal-label {
+    display: block;
+    margin-bottom: 6px;
 }
 </style>
