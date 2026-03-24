@@ -5,6 +5,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { hasSupabaseConfig, supabase } from "../lib/supabase";
 import ShopifyExportVariations from '../components/ShopifyExportVariations.vue';
+import ExportPreviewModal from '../components/ExportPreviewModal.vue';
 import { createBin, updateBinName, deleteBin } from "../lib/binCrud";
 import BinFormModal from "../components/BinFormModal.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
@@ -23,6 +24,7 @@ const printingBinId = ref("");
 let scannerInstance = null;
 let hasHandledDecode = false;
 
+const showExportModal = ref(false);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const editingBin = ref(null);
@@ -284,7 +286,6 @@ const filteredBins = computed(() => {
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
-
     return haystack.includes(normalizedQuery);
   });
 });
@@ -536,6 +537,7 @@ onUnmounted(stopScan);
         Search bins by ID or name from Supabase inventory data.
       </div>
       <div class="hero-actions reveal-fade-up reveal-delay-2">
+        <button class="btn" type="button" @click="showExportModal = true">Export Inventory</button>
         <ShopifyExportVariations compact />
         <button class="btn" type="button" @click="openCreate">+ Create Bin</button>
         <button
@@ -707,17 +709,6 @@ onUnmounted(stopScan);
       :error-message="deleteError"
       @confirm="onDeleteConfirm"
       @cancel="showDeleteConfirm = false; deletingBin = null; deleteError = ''; deleteConfirmMessage = ''"
-    />
-
-    <ConfirmModal
-      v-if="showMassDeleteConfirm"
-      title="Delete Selected Bins"
-      :message="massDeleteProgress || massDeleteMessage"
-      confirm-label="Delete All"
-      :is-loading="isMassDeleting"
-      :error-message="massDeleteError"
-      @confirm="onMassDeleteConfirm"
-      @cancel="showMassDeleteConfirm = false; massDeleteError = ''; massDeleteProgress = ''"
     />
   </div>
 </template>
