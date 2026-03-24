@@ -493,8 +493,28 @@ async function commitInlineEdit(variation, item) {
     return;
   }
 
-  const expandedItemIds = Object.keys(expandedItems.value).filter((id) => expandedItems.value[id]);
-  await loadBinDetail({ expandedItemIds });
+  // Patch local state — no full reload needed
+  const varList = variationsByItemId.value[item.id];
+  if (varList) {
+    const idx = varList.findIndex((v) => v.id === variation.id);
+    if (idx !== -1) {
+      varList[idx] = { ...varList[idx], [field]: numValue };
+    }
+  }
+
+  if (field === 'quantity') {
+    const newItemTotal = (variationsByItemId.value[item.id] || [])
+      .reduce((sum, v) => sum + normalizeQuantityTotal(v.quantity), 0);
+
+    items.value = items.value.map((i) =>
+      i.id === item.id ? { ...i, total_quantity: newItemTotal } : i
+    );
+
+    const newBinTotal = items.value.reduce((sum, i) => sum + normalizeQuantityTotal(i.total_quantity), 0);
+    if (bin.value) {
+      bin.value = { ...bin.value, total_quantity: newBinTotal };
+    }
+  }
 }
 
 function openEdit() {
