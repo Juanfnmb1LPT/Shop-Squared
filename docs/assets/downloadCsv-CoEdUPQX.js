@@ -1,0 +1,1 @@
+function d(o,c){const n=new Blob([o],{type:"text/csv;charset=utf-8;"}),t=URL.createObjectURL(n),e=document.createElement("a");e.href=t,e.download=c,document.body.appendChild(e),e.click(),e.remove(),URL.revokeObjectURL(t)}export{d};
