@@ -8,7 +8,7 @@ const props = defineProps({
     errorMessage: { type: String, default: '' },
 });
 
-const emit = defineEmits(['submit', 'cancel']);
+const emit = defineEmits(['submit', 'cancel', 'delete']);
 
 const formName = ref('');
 const validationError = ref('');
@@ -64,12 +64,23 @@ function onSubmit() {
                     <p v-if="errorMessage" class="bin-modal-error" role="alert">{{ errorMessage }}</p>
 
                     <div class="bin-modal-actions">
-                        <button class="btn secondary" type="button" :disabled="isSaving" @click="emit('cancel')">
-                            Cancel
+                        <button v-if="mode === 'edit'" class="bin-modal-delete-btn" type="button" :disabled="isSaving" @click="emit('delete')" title="Delete bin">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M3 6h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M10 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                         </button>
-                        <button class="btn" type="submit" :disabled="isSaving">
-                            {{ isSaving ? 'Saving...' : (mode === 'create' ? 'Create Bin' : 'Save Changes') }}
-                        </button>
+                        <div class="bin-modal-actions-right">
+                            <button class="btn secondary" type="button" :disabled="isSaving" @click="emit('cancel')">
+                                Cancel
+                            </button>
+                            <button class="btn" type="submit" :disabled="isSaving">
+                                {{ isSaving ? 'Saving...' : (mode === 'create' ? 'Create Bin' : 'Save Changes') }}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -190,8 +201,33 @@ function onSubmit() {
 
 .bin-modal-actions {
     display: flex;
-    gap: 10px;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
     margin-top: 10px;
+}
+
+.bin-modal-actions-right {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.bin-modal-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    min-width: 40px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    background: rgba(255, 238, 238, 0.95);
+    color: #991b1b;
+    cursor: pointer;
+}
+
+.bin-modal-delete-btn:hover {
+    background: rgba(255, 220, 220, 0.95);
+    border-color: rgba(220, 38, 38, 0.35);
 }
 </style>

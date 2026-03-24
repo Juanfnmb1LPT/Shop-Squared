@@ -56,6 +56,13 @@ const inlineEdit = ref(null); // { variationId, field, value }
 const inlineSavingId = ref(null);
 const inlineSaveError = ref('');
 
+const itemSelectMode = ref(false);
+const selectedItemIds = ref(new Set());
+const showMassItemDeleteConfirm = ref(false);
+const isMassItemDeleting = ref(false);
+const massItemDeleteError = ref('');
+const massItemDeleteProgress = ref('');
+
 const binId = computed(() => route.params.id);
 
 const sizeOrder = { XS: 0, S: 1, M: 2, L: 3, XL: 4, '2XL': 5, '3XL': 6 };
@@ -556,6 +563,95 @@ async function onDeleteConfirm() {
   await router.push('/search-inventory');
 }
 
+function onEditVariationDelete() {
+  const item = selectedVariationItem.value;
+  const variation = editingVariation.value;
+  closeVariationModal();
+  if (item && variation) {
+    openDeleteVariation(item, variation);
+  }
+}
+
+function onEditItemDelete() {
+  const item = editingItem.value;
+  closeItemModal();
+  if (item) {
+    openDeleteItem(item);
+  }
+}
+
+function toggleItemSelectMode() {
+  itemSelectMode.value = !itemSelectMode.value;
+  if (!itemSelectMode.value) {
+    selectedItemIds.value = new Set();
+  }
+}
+
+function toggleItemSelection(itemId) {
+  const next = new Set(selectedItemIds.value);
+  if (next.has(itemId)) {
+    next.delete(itemId);
+  } else {
+    next.add(itemId);
+  }
+  selectedItemIds.value = next;
+}
+
+function selectAllItems() {
+  const next = new Set(selectedItemIds.value);
+  for (const item of items.value) {
+    next.add(item.id);
+  }
+  selectedItemIds.value = next;
+}
+
+function deselectAllItems() {
+  selectedItemIds.value = new Set();
+}
+
+const massItemDeleteMessage = computed(() => {
+  const selected = items.value.filter((i) => selectedItemIds.value.has(i.id));
+  const lines = selected.map((item) => {
+    const count = (variationsByItemId.value[item.id] || []).length;
+    return `• <b>${item.name}</b> and its <b>${count} variation${count === 1 ? '' : 's'}</b> will be completely deleted`;
+  });
+  return `Are you sure?\n\n${lines.join('\n')}`;
+});
+
+function openMassItemDelete() {
+  massItemDeleteError.value = '';
+  massItemDeleteProgress.value = '';
+  showMassItemDeleteConfirm.value = true;
+}
+
+async function onMassItemDeleteConfirm() {
+  const ids = [...selectedItemIds.value];
+  if (!ids.length) return;
+
+  isMassItemDeleting.value = true;
+  massItemDeleteError.value = '';
+
+  for (let i = 0; i < ids.length; i++) {
+    massItemDeleteProgress.value = `Deleting ${i + 1} of ${ids.length}...`;
+    const result = await deleteItem(ids[i]);
+    if (!result.ok) {
+      massItemDeleteError.value = `Failed on item ${i + 1} of ${ids.length}: ${result.error}`;
+      isMassItemDeleting.value = false;
+      massItemDeleteProgress.value = '';
+      await loadBinDetail();
+      selectedItemIds.value = new Set(ids.slice(i));
+      return;
+    }
+  }
+
+  isMassItemDeleting.value = false;
+  massItemDeleteProgress.value = '';
+  showMassItemDeleteConfirm.value = false;
+  selectedItemIds.value = new Set();
+  itemSelectMode.value = false;
+  await loadBinDetail();
+}
+
 watch(binId, () => {
   loadBinDetail();
 });
@@ -578,15 +674,6 @@ onMounted(loadBinDetail);
 
         <div class="inventory-detail-header-actions">
           <button class="btn secondary" type="button" @click="openEdit">Edit Bin</button>
-          <button class="inventory-action-delete-btn" type="button" @click="openDelete" :aria-label="`Delete ${bin.name}`" title="Delete bin">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M3 6h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M10 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
           <router-link class="btn secondary" to="/search-inventory">Back</router-link>
         </div>
       </div>
@@ -598,37 +685,64 @@ onMounted(loadBinDetail);
             <div class="inventory-detail-subtitle">Manage items and their variations for this bin.</div>
           </div>
 
-          <button class="btn" type="button" @click="openCreateItem">+ Add Item</button>
+          <div class="inventory-detail-section-buttons">
+            <button class="btn" type="button" @click="openCreateItem">+ Add Item</button>
+            <button
+              v-if="items.length"
+              class="btn"
+              :class="{ 'btn-select-active': itemSelectMode }"
+              type="button"
+              @click="toggleItemSelectMode"
+            >
+              {{ itemSelectMode ? 'Cancel Select' : 'Select Items' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="itemSelectMode && items.length" class="inventory-select-toolbar">
+          <div class="select-toolbar-info">
+            {{ selectedItemIds.size }} item{{ selectedItemIds.size === 1 ? '' : 's' }} selected
+          </div>
+          <div class="select-toolbar-actions">
+            <button class="btn btn-sm" type="button" @click="selectAllItems">Select All</button>
+            <button class="btn btn-sm secondary" type="button" @click="deselectAllItems" :disabled="!selectedItemIds.size">Deselect All</button>
+            <button class="btn btn-sm btn-danger" type="button" @click="openMassItemDelete" :disabled="!selectedItemIds.size">
+              Delete Selected ({{ selectedItemIds.size }})
+            </button>
+          </div>
         </div>
 
         <div v-if="items.length" class="inventory-item-list">
-          <div v-for="item in items" :key="item.id" class="inventory-item-card">
+          <div
+            v-for="item in items"
+            :key="item.id"
+            class="inventory-item-card"
+            :class="{ 'inventory-item-selected': itemSelectMode && selectedItemIds.has(item.id) }"
+          >
             <div class="inventory-item-header">
-              <button class="inventory-item-toggle" type="button" @click="toggleItem(item.id)">
+              <div v-if="itemSelectMode" class="inventory-item-checkbox" @click="toggleItemSelection(item.id)">
+                <div class="checkbox-box" :class="{ checked: selectedItemIds.has(item.id) }">
+                  <svg v-if="selectedItemIds.has(item.id)" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              </div>
+              <button class="inventory-item-toggle" type="button" @click="itemSelectMode ? toggleItemSelection(item.id) : toggleItem(item.id)">
                 <span class="inventory-item-name-shell">
                   <span class="inventory-item-name">{{ item.name }}</span>
                   <span class="inventory-item-total"> Item Quantity: {{ item.total_quantity ?? 0 }}</span>
                 </span>
-                <span class="inventory-item-toggle-label">
-                  {{ expandedItems[item.id] ? 'Hide variations' : 'Show variations' }}
+                <span v-if="!itemSelectMode" class="inventory-item-toggle-label">
+                  {{ expandedItems[item.id] ? `Hide ${itemVariations(item.id).length} variations` : `Show ${itemVariations(item.id).length} variations` }}
                 </span>
               </button>
 
-              <div class="inventory-entity-actions">
+              <div v-if="!itemSelectMode" class="inventory-entity-actions">
                 <button class="inventory-entity-button" type="button" @click="openCreateVariation(item)">
                   + Variation
                 </button>
                 <button class="inventory-entity-button" type="button" @click="openEditItem(item)">
                   Edit
-                </button>
-                <button class="inventory-entity-delete" type="button" @click="openDeleteItem(item)" :aria-label="`Delete ${item.name}`" title="Delete item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M3 6h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
                 </button>
               </div>
             </div>
@@ -698,15 +812,6 @@ onMounted(loadBinDetail);
                     <button class="inventory-entity-button" type="button" @click="openEditVariation(item, variation)">
                       Edit
                     </button>
-                    <button class="inventory-entity-delete" type="button" @click="openDeleteVariation(item, variation)" :aria-label="`Delete variation ${variation.sku || variation.id}`" title="Delete variation">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M3 6h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M10 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                    </button>
                   </div>
                 </div>
 
@@ -740,6 +845,7 @@ onMounted(loadBinDetail);
       :error-message="modalError"
       @submit="onEditSubmit"
       @cancel="showEditModal = false; modalError = ''"
+      @delete="showEditModal = false; modalError = ''; openDelete()"
     />
 
     <ItemFormModal
@@ -763,6 +869,7 @@ onMounted(loadBinDetail);
       :error-message="itemModalError"
       @submit="onEditItemSubmit"
       @cancel="closeItemModal"
+      @delete="onEditItemDelete"
     />
 
     <VariationFormModal
@@ -784,6 +891,7 @@ onMounted(loadBinDetail);
       :error-message="variationModalError"
       @submit="onEditVariationSubmit"
       @cancel="closeVariationModal"
+      @delete="onEditVariationDelete"
     />
 
     <ConfirmModal
@@ -817,6 +925,17 @@ onMounted(loadBinDetail);
       :error-message="variationDeleteError"
       @confirm="onDeleteVariationConfirm"
       @cancel="closeVariationDeleteConfirm"
+    />
+
+    <ConfirmModal
+      v-if="showMassItemDeleteConfirm"
+      title="Delete Selected Items"
+      :message="massItemDeleteProgress || massItemDeleteMessage"
+      confirm-label="Delete All"
+      :is-loading="isMassItemDeleting"
+      :error-message="massItemDeleteError"
+      @confirm="onMassItemDeleteConfirm"
+      @cancel="showMassItemDeleteConfirm = false; massItemDeleteError = ''; massItemDeleteProgress = ''"
     />
   </div>
 </template>
@@ -1205,5 +1324,100 @@ onMounted(loadBinDetail);
     min-width: 14px;
     min-height: 14px;
   }
+}
+
+.inventory-detail-section-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-select-active {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.btn-select-active:hover {
+  box-shadow: 0 18px 40px rgba(245, 158, 11, 0.2);
+}
+
+.inventory-select-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: rgba(255, 251, 235, 0.95);
+  flex-wrap: wrap;
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+
+.select-toolbar-info {
+  font-weight: 700;
+  color: #92400e;
+  font-size: 15px;
+}
+
+.select-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+
+.btn-danger {
+  background: linear-gradient(90deg, #dc2626, #ef4444);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  box-shadow: 0 12px 30px rgba(220, 38, 38, 0.2);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inventory-item-selected {
+  border-color: rgba(37, 99, 235, 0.35) !important;
+  background: rgba(219, 234, 254, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.inventory-item-checkbox {
+  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-box {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 2px solid rgba(18, 58, 138, 0.25);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.checkbox-box.checked {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.checkbox-box:hover {
+  border-color: #2563eb;
 }
 </style>
