@@ -149,13 +149,13 @@ function onSubmit() {
                         :disabled="isSaving"
                     >
                         <option value="">—</option>
-                        <option value="XXS">XXS</option>
                         <option value="XS">XS</option>
                         <option value="S">S</option>
                         <option value="M">M</option>
                         <option value="L">L</option>
                         <option value="XL">XL</option>
-                        <option value="XXL">XXL</option>
+                        <option value="2XL">2XL</option>
+                        <option value="3XL">3XL</option>
                     </select>
 
                     <p v-if="validationError" class="entity-modal-error" role="alert">{{ validationError }}</p>
