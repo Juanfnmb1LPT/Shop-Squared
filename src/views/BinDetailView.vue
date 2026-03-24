@@ -52,9 +52,13 @@ const isVariationDeleting = ref(false);
 const variationDeleteError = ref('');
 const variationDeleteMessage = ref('');
 
+const inlineEdit = ref(null); // { variationId, field, value }
+const inlineSavingId = ref(null);
+const inlineSaveError = ref('');
+
 const binId = computed(() => route.params.id);
 
-const sizeOrder = { XXS: 0, XS: 1, S: 2, M: 3, L: 4, XL: 5, XXL: 6 };
+const sizeOrder = { XS: 0, S: 1, M: 2, L: 3, XL: 4, '2XL': 5, '3XL': 6 };
 
 function sortVariations(variations) {
   return [...variations].sort((a, b) => {
@@ -441,6 +445,58 @@ async function onDeleteVariationConfirm() {
   await loadBinDetail({ expandedItemIds: expandedItemId ? [expandedItemId] : [] });
 }
 
+function startInlineEdit(variation, field) {
+  inlineSaveError.value = '';
+  inlineEdit.value = {
+    variationId: variation.id,
+    field,
+    value: field === 'quantity' ? String(variation.quantity ?? 0) : String(variation.price ?? 0),
+  };
+}
+
+function cancelInlineEdit() {
+  inlineEdit.value = null;
+  inlineSaveError.value = '';
+}
+
+async function commitInlineEdit(variation, item) {
+  if (!inlineEdit.value || inlineEdit.value.variationId !== variation.id) return;
+
+  const { field, value } = inlineEdit.value;
+  inlineEdit.value = null; // clear immediately so blur doesn't re-trigger
+
+  const numValue = Number(value);
+  if (Number.isNaN(numValue)) {
+    inlineSaveError.value = `Invalid ${field}.`;
+    return;
+  }
+
+  inlineSavingId.value = variation.id;
+  inlineSaveError.value = '';
+
+  const result = await updateVariation({
+    id: variation.id,
+    itemId: item.id,
+    itemName: item.name,
+    sku: variation.sku,
+    quantity: field === 'quantity' ? numValue : variation.quantity,
+    price: field === 'price' ? numValue : variation.price,
+    color: variation.color,
+    style: variation.style,
+    size: variation.size,
+  });
+
+  inlineSavingId.value = null;
+
+  if (!result.ok) {
+    inlineSaveError.value = result.error;
+    return;
+  }
+
+  const expandedItemIds = Object.keys(expandedItems.value).filter((id) => expandedItems.value[id]);
+  await loadBinDetail({ expandedItemIds });
+}
+
 function openEdit() {
   modalError.value = '';
   showEditModal.value = true;
@@ -562,8 +618,57 @@ onMounted(loadBinDetail);
                 <div v-for="variation in itemVariations(item.id)" :key="variation.id" class="inventory-variation-card">
                   <div class="inventory-variation-fields">
                     <div><strong>SKU:</strong> {{ variation.sku || '—' }}</div>
-                    <div><strong>Quantity:</strong> {{ variation.quantity ?? '—' }}</div>
-                    <div><strong>Price:</strong> {{ formatVariationPrice(variation.price) }}</div>
+
+                    <div class="variation-inline-field">
+                      <strong>Quantity:</strong>
+                      <input
+                        v-if="inlineEdit?.variationId === variation.id && inlineEdit?.field === 'quantity'"
+                        class="variation-inline-input"
+                        type="number"
+                        inputmode="numeric"
+                        :value="inlineEdit.value"
+                        :disabled="inlineSavingId === variation.id"
+                        :ref="el => el?.focus()"
+                        @input="inlineEdit.value = $event.target.value"
+                        @keydown.enter.prevent="commitInlineEdit(variation, item)"
+                        @keydown.escape="cancelInlineEdit"
+                        @blur="commitInlineEdit(variation, item)"
+                      />
+                      <span
+                        v-else
+                        class="variation-inline-value"
+                        :class="{ saving: inlineSavingId === variation.id }"
+                        title="Click to edit"
+                        @click="startInlineEdit(variation, 'quantity')"
+                      >{{ variation.quantity ?? '—' }}</span>
+                    </div>
+
+                    <div class="variation-inline-field">
+                      <strong>Price:</strong>
+                      <input
+                        v-if="inlineEdit?.variationId === variation.id && inlineEdit?.field === 'price'"
+                        class="variation-inline-input"
+                        type="number"
+                        inputmode="decimal"
+                        min="0"
+                        step="0.01"
+                        :value="inlineEdit.value"
+                        :disabled="inlineSavingId === variation.id"
+                        :ref="el => el?.focus()"
+                        @input="inlineEdit.value = $event.target.value"
+                        @keydown.enter.prevent="commitInlineEdit(variation, item)"
+                        @keydown.escape="cancelInlineEdit"
+                        @blur="commitInlineEdit(variation, item)"
+                      />
+                      <span
+                        v-else
+                        class="variation-inline-value"
+                        :class="{ saving: inlineSavingId === variation.id }"
+                        title="Click to edit"
+                        @click="startInlineEdit(variation, 'price')"
+                      >{{ formatVariationPrice(variation.price) }}</span>
+                    </div>
+
                     <div><strong>Color:</strong> {{ variation.color || '—' }}</div>
                     <div><strong>Style:</strong> {{ variation.style || '—' }}</div>
                     <div><strong>Size:</strong> {{ variation.size || '—' }}</div>
@@ -584,6 +689,8 @@ onMounted(loadBinDetail);
                     </button>
                   </div>
                 </div>
+
+                <p v-if="inlineSaveError" class="inline-save-error" role="alert">{{ inlineSaveError }}</p>
               </div>
 
               <div v-else class="inventory-detail-no-items inventory-detail-no-items-inline">
@@ -912,6 +1019,56 @@ onMounted(loadBinDetail);
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.variation-inline-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.variation-inline-value {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.variation-inline-value:hover {
+  background: rgba(11, 99, 214, 0.08);
+  border-color: rgba(11, 99, 214, 0.2);
+}
+
+.variation-inline-value.saving {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.variation-inline-input {
+  width: 80px;
+  height: 30px;
+  padding: 3px 8px;
+  border: 1.5px solid rgba(11, 99, 214, 0.4);
+  border-radius: 8px;
+  background: #fff;
+  color: #082145;
+  font: inherit;
+  font-size: 14px;
+}
+
+.variation-inline-input:focus {
+  outline: none;
+  border-color: #0b63d6;
+  box-shadow: 0 0 0 3px rgba(11, 99, 214, 0.12);
+}
+
+.inline-save-error {
+  margin: 8px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .inventory-detail-no-items {

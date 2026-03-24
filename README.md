@@ -15,6 +15,8 @@ All parsing and processing runs locally in the browser. No file data is uploaded
 - Search Inventory with QR scan support for bin lookup and auto-navigation
 - Bin CRUD from Search Inventory
 - Item and variation CRUD from the Bin Detail page
+- Auto-generate size variations when creating an item — select sizes (XS–3XL), set a base SKU, price, color, and style; variations are batch-created with SKUs like `TSHIRT-BLK-XS`, `TSHIRT-BLK-M`, etc.
+- Inline quantity and price editing on variation cards — click to edit, Enter or blur to save, Escape to cancel
 
 ## Run locally
 
@@ -76,6 +78,7 @@ Routing uses hash mode (`/#/`) so direct page refresh works on GitHub Pages with
 - `/#/update-quantity` Update Shopify quantity tool
 - `/#/search-inventory` Search inventory page
 - `/#/search-inventory/:id` Bin detail and item/variation management page
+- `/#/update-inventory` Bulk update variation quantities from a Shopify or Square CSV file
 
 The app uses a persistent left dashboard for navigation between all pages.
 
@@ -87,14 +90,22 @@ The app uses a persistent left dashboard for navigation between all pages.
 - `src/views/ShopifyToSquareView.vue` Shopify → Square UI
 - `src/views/UpdateQuantityView.vue` Quantity update UI
 - `src/views/SearchInventoryView.vue` Bin search and bin CRUD UI
-- `src/views/BinDetailView.vue` Bin detail plus item and variation CRUD UI
+- `src/views/BinDetailView.vue` Bin detail plus item and variation CRUD UI (inline qty/price editing)
+- `src/views/UpdateInventoryView.vue` Bulk DB update from uploaded Shopify or Square CSV
+- `src/components/ItemFormModal.vue` Create/edit item — includes size variation auto-generator
+- `src/components/VariationFormModal.vue` Create/edit individual variation
+- `src/components/BinFormModal.vue` Create/edit bin
+- `src/components/ConfirmModal.vue` Generic delete confirmation
 - `src/lib/convertShopToSquare.js` Shopify → Square transformation logic
-- `src/lib/updateInventoryFromSquare.js` Quantity sync logic
+- `src/lib/updateInventoryFromSquare.js` Quantity sync logic (Square → DB)
+- `src/lib/updateInventoryFromShopify.js` Quantity sync logic (Shopify → DB)
+- `src/lib/parseUploadedTable.js` CSV + XLSX/XLS file parsing
 - `src/lib/downloadCsv.js` Browser CSV download helper
 - `src/lib/binCrud.js` Bin CRUD helpers
 - `src/lib/itemCrud.js` Item CRUD helpers
 - `src/lib/variationCrud.js` Variation CRUD helpers
-- `src/router/index.js` Vue Router setup
+- `src/lib/auth.js` Auth helpers (localStorage session)
+- `src/router/index.js` Vue Router setup with auth guard
 - `styles.css` Shared styling
 
 ## Test data

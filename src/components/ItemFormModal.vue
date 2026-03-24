@@ -12,7 +12,7 @@ const props = defineProps({
 
 const emit = defineEmits(['submit', 'cancel']);
 
-const ALL_SIZES = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
 
 const formName = ref('');
 const formBinId = ref('');

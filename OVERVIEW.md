@@ -103,7 +103,7 @@ Cascading deletes: bin → items → variations.
 
 - **Shopify→Square mapping** (`convertShopToSquare.js`): groups rows by Handle, detects gender from Title/Tags/Options, maps Option columns to Square format
 - **SKU matching** (`updateInventoryFromSquare.js`): fuzzy header detection + SKU-keyed Map for bulk quantity sync
-- **Size sorting** (BinDetailView, ShopifyExportVariations): `XXS→XXL` order, then color, then SKU
+- **Size sorting** (BinDetailView, ShopifyExportVariations): `XS→3XL` order, then SKU
 - **QR scanning**: decodes bin ID from QR, navigates to `/search-inventory/:id`
 
 ---
@@ -124,7 +124,7 @@ GitHub Pages deployment via Actions. Requires env secrets: `VITE_SUPABASE_URL`, 
 ## Current Limitations / Known Issues
 
 - **No global state management** (no Pinia/Vuex) — all state is local or fetched live from Supabase; no caching
-- **No batch CRUD** in inventory UI — items/variations must be created/edited one at a time
+- **No batch delete** in inventory UI — items/variations must be deleted one at a time
 - **QR scan requires HTTPS or localhost** — won't work on plain HTTP
 - **Excel support** — only reads the first sheet of multi-sheet workbooks
 - **Single location** — Square quantity sync assumes a single store location; multi-location not supported
@@ -141,7 +141,7 @@ GitHub Pages deployment via Actions. Requires env secrets: `VITE_SUPABASE_URL`, 
 
 - [ ] **Bulk CSV import into inventory DB** — allow uploading a CSV to create/update many items and variations at once (not just quantity sync)
 - [ ] **Bulk delete** — checkboxes + bulk-delete action for items/variations in BinDetailView
-- [ ] **Variation inline editing** — edit quantity/price directly in the table without opening a modal
+- [x] **Variation inline editing** — edit quantity/price directly in the table without opening a modal
 - [ ] **Multi-location Square support** — let user select which Square location's quantity column to use during sync
 - [ ] **Export all bins to CSV** — dump entire inventory DB to a single CSV for backup/review
 - [ ] **Search within BinDetailView** — filter items/variations by SKU or name within a bin
