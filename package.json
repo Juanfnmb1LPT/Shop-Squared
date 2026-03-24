@@ -4,12 +4,12 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
-        "dev": "vite",
-        "build": "vite build",
-        "build:gh-pages": "vite build --base=/Shop-Squared/",
-        "build:docs": "vite build --outDir docs",
-        "preview": "vite preview"
-    },
+    "dev": "vite",
+    "build": "vite build",
+    "build:gh-pages": "vite build --base=./",
+    "build:docs": "vite build --outDir docs",
+    "preview": "vite preview"
+  },
     "dependencies": {
         "@supabase/supabase-js": "^2.99.1",
         "docx": "^9.6.1",
