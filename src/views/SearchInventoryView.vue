@@ -710,6 +710,11 @@ onUnmounted(stopScan);
       @confirm="onDeleteConfirm"
       @cancel="showDeleteConfirm = false; deletingBin = null; deleteError = ''; deleteConfirmMessage = ''"
     />
+
+    <ExportPreviewModal
+      v-if="showExportModal"
+      @close="showExportModal = false"
+    />
   </div>
 </template>
 
