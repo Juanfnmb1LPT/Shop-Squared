@@ -273,17 +273,35 @@ function closeItemDeleteConfirm() {
   itemDeleteMessage.value = '';
 }
 
-async function onCreateItemSubmit({ name, binId: targetBinId }) {
+async function onCreateItemSubmit({ name, binId: targetBinId, sizes, baseSku, price, color, style }) {
   isItemSaving.value = true;
   itemModalError.value = '';
   const result = await createItem({ name, binId: targetBinId });
-  isItemSaving.value = false;
 
   if (!result.ok) {
+    isItemSaving.value = false;
     itemModalError.value = result.error;
     return;
   }
 
+  if (sizes?.length && result.data?.id) {
+    await Promise.all(
+      sizes.map((size) =>
+        createVariation({
+          itemId: result.data.id,
+          itemName: name,
+          sku: baseSku ? `${baseSku}-${size}` : '',
+          quantity: 0,
+          price: price ?? 0,
+          color: color || '',
+          style: style || null,
+          size,
+        })
+      )
+    );
+  }
+
+  isItemSaving.value = false;
   closeItemModal();
   await loadBinDetail({
     expandedItemIds: targetBinId === binId.value && result.data?.id ? [result.data.id] : [],
