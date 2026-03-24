@@ -819,8 +819,8 @@ onUnmounted(stopScan);
 
 @media (max-width: 640px) {
   .inventory-hero .hero-actions {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }
 
