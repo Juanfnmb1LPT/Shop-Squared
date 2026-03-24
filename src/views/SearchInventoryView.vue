@@ -34,6 +34,13 @@ const isDeleting = ref(false);
 const deleteError = ref("");
 const deleteConfirmMessage = ref("");
 
+const selectMode = ref(false);
+const selectedBinIds = ref(new Set());
+const showMassDeleteConfirm = ref(false);
+const isMassDeleting = ref(false);
+const massDeleteError = ref("");
+const massDeleteProgress = ref("");
+
 function normalizeQuantityTotal(value, fallback = 0) {
   const parsedValue = Number(value);
   return Number.isFinite(parsedValue) ? parsedValue : fallback;
@@ -293,6 +300,16 @@ function openEdit(bin) {
   showEditModal.value = true;
 }
 
+function onEditBinDelete() {
+  const bin = editingBin.value;
+  showEditModal.value = false;
+  editingBin.value = null;
+  modalError.value = "";
+  if (bin) {
+    openDelete(bin);
+  }
+}
+
 function openDelete(bin) {
   deletingBin.value = bin;
   deleteError.value = "";
@@ -339,6 +356,78 @@ async function onDeleteConfirm() {
   showDeleteConfirm.value = false;
   deletingBin.value = null;
   deleteConfirmMessage.value = "";
+  await loadBins();
+}
+
+function toggleSelectMode() {
+  selectMode.value = !selectMode.value;
+  if (!selectMode.value) {
+    selectedBinIds.value = new Set();
+  }
+}
+
+function toggleBinSelection(binId) {
+  const next = new Set(selectedBinIds.value);
+  if (next.has(binId)) {
+    next.delete(binId);
+  } else {
+    next.add(binId);
+  }
+  selectedBinIds.value = next;
+}
+
+function selectAllVisible() {
+  const next = new Set(selectedBinIds.value);
+  for (const bin of filteredBins.value) {
+    next.add(bin.id);
+  }
+  selectedBinIds.value = next;
+}
+
+function deselectAll() {
+  selectedBinIds.value = new Set();
+}
+
+const massDeleteMessage = computed(() => {
+  const selected = bins.value.filter((b) => selectedBinIds.value.has(b.id));
+  const lines = selected.map((bin) => {
+    const count = bin.items.length;
+    return `• <b>${bin.name}</b> and its <b>${count} item${count === 1 ? '' : 's'}</b> will be completely deleted`;
+  });
+  return `Are you sure?\n\n${lines.join("\n")}`;
+});
+
+function openMassDelete() {
+  massDeleteError.value = "";
+  massDeleteProgress.value = "";
+  showMassDeleteConfirm.value = true;
+}
+
+async function onMassDeleteConfirm() {
+  const ids = [...selectedBinIds.value];
+  if (!ids.length) return;
+
+  isMassDeleting.value = true;
+  massDeleteError.value = "";
+
+  for (let i = 0; i < ids.length; i++) {
+    massDeleteProgress.value = `Deleting ${i + 1} of ${ids.length}...`;
+    const result = await deleteBin(ids[i]);
+    if (!result.ok) {
+      massDeleteError.value = `Failed on bin ${i + 1} of ${ids.length}: ${result.error}`;
+      isMassDeleting.value = false;
+      massDeleteProgress.value = "";
+      await loadBins();
+      selectedBinIds.value = new Set(ids.slice(i));
+      return;
+    }
+  }
+
+  isMassDeleting.value = false;
+  massDeleteProgress.value = "";
+  showMassDeleteConfirm.value = false;
+  selectedBinIds.value = new Set();
+  selectMode.value = false;
   await loadBins();
 }
 
@@ -449,6 +538,14 @@ onUnmounted(stopScan);
       <div class="hero-actions reveal-fade-up reveal-delay-2">
         <ShopifyExportVariations compact />
         <button class="btn" type="button" @click="openCreate">+ Create Bin</button>
+        <button
+          class="btn"
+          :class="{ 'btn-select-active': selectMode }"
+          type="button"
+          @click="toggleSelectMode"
+        >
+          {{ selectMode ? 'Cancel Select' : 'Select Bins' }}
+        </button>
       </div>
     </div>
 <div class="inventory-total">Total Item Types: {{ totalVariations === null ? '—' : totalVariations }}</div>
@@ -489,6 +586,19 @@ onUnmounted(stopScan);
       </div>
     </div>
 
+    <div v-if="selectMode" class="inventory-select-toolbar">
+      <div class="select-toolbar-info">
+        {{ selectedBinIds.size }} bin{{ selectedBinIds.size === 1 ? '' : 's' }} selected
+      </div>
+      <div class="select-toolbar-actions">
+        <button class="btn btn-sm" type="button" @click="selectAllVisible">Select All</button>
+        <button class="btn btn-sm secondary" type="button" @click="deselectAll" :disabled="!selectedBinIds.size">Deselect All</button>
+        <button class="btn btn-sm btn-danger" type="button" @click="openMassDelete" :disabled="!selectedBinIds.size">
+          Delete Selected ({{ selectedBinIds.size }})
+        </button>
+      </div>
+    </div>
+
     <div class="inventory-grid reveal-fade-up reveal-delay-2">
       <div v-if="isLoading" class="inventory-empty-state">Loading bins...</div>
 
@@ -500,8 +610,17 @@ onUnmounted(stopScan);
         v-for="bin in filteredBins"
         :key="bin.id"
         class="inventory-bin-card"
+        :class="{ 'inventory-bin-selected': selectMode && selectedBinIds.has(bin.id) }"
+        @click="selectMode ? toggleBinSelection(bin.id) : null"
       >
-        <router-link class="inventory-bin-full" :to="`/search-inventory/${bin.id}`">
+        <div v-if="selectMode" class="inventory-bin-checkbox" @click.stop="toggleBinSelection(bin.id)">
+          <div class="checkbox-box" :class="{ checked: selectedBinIds.has(bin.id) }">
+            <svg v-if="selectedBinIds.has(bin.id)" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <router-link v-if="!selectMode" class="inventory-bin-full" :to="`/search-inventory/${bin.id}`">
           <div class="inventory-bin-link">
             <div class="inventory-bin-name">{{ bin.name }}</div>
             <div class="inventory-bin-total">Total quantity: {{ bin.total_quantity ?? 0 }}</div>
@@ -515,13 +634,13 @@ onUnmounted(stopScan);
               </li>
             </ul>
           </div>
-
-          <div class="inventory-bin-actions">
+        </router-link>
+        <div v-if="!selectMode" class="inventory-bin-actions">
           <button
             class="inventory-print-button"
             type="button"
             :disabled="printingBinId === String(bin.id)"
-            @click.stop="printBinQr(bin)"
+            @click="printBinQr(bin)"
           >
             {{
               printingBinId === String(bin.id)
@@ -529,10 +648,10 @@ onUnmounted(stopScan);
                 : "Print QR Label"
             }}
           </button>
-          <button class="inventory-print-button" type="button" @click.stop="openEdit(bin)">
+          <button class="inventory-print-button" type="button" @click="openEdit(bin)">
             Edit
           </button>
-          <button class="inventory-delete-btn" type="button" @click.stop="openDelete(bin)" :aria-label="`Delete ${bin.name}`" title="Delete bin">
+          <button class="inventory-delete-btn" type="button" @click="openDelete(bin)" :aria-label="`Delete ${bin.name}`" title="Delete bin">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <path d="M3 6h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -541,8 +660,14 @@ onUnmounted(stopScan);
               <path d="M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>
+        </div>
+        <div v-else class="inventory-bin-full">
+          <div class="inventory-bin-link">
+            <div class="inventory-bin-name">{{ bin.name }}</div>
+            <div class="inventory-bin-total">Total quantity: {{ bin.total_quantity ?? 0 }}</div>
+            <div class="inventory-bin-summary">Items: {{ bin.items.length }}</div>
           </div>
-        </router-link>
+        </div>
       </article>
 
       <div
@@ -570,6 +695,7 @@ onUnmounted(stopScan);
       :error-message="modalError"
       @submit="onEditSubmit"
       @cancel="showEditModal = false; editingBin = null; modalError = ''"
+      @delete="onEditBinDelete"
     />
 
     <ConfirmModal
@@ -581,6 +707,17 @@ onUnmounted(stopScan);
       :error-message="deleteError"
       @confirm="onDeleteConfirm"
       @cancel="showDeleteConfirm = false; deletingBin = null; deleteError = ''; deleteConfirmMessage = ''"
+    />
+
+    <ConfirmModal
+      v-if="showMassDeleteConfirm"
+      title="Delete Selected Bins"
+      :message="massDeleteProgress || massDeleteMessage"
+      confirm-label="Delete All"
+      :is-loading="isMassDeleting"
+      :error-message="massDeleteError"
+      @confirm="onMassDeleteConfirm"
+      @cancel="showMassDeleteConfirm = false; massDeleteError = ''; massDeleteProgress = ''"
     />
   </div>
 </template>
@@ -762,7 +899,9 @@ onUnmounted(stopScan);
 }
 
 .inventory-bin-full {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   color: inherit;
   text-decoration: none;
 }
@@ -861,6 +1000,96 @@ onUnmounted(stopScan);
   text-align: center;
 }
 
+.btn-select-active {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.btn-select-active:hover {
+  box-shadow: 0 18px 40px rgba(245, 158, 11, 0.2);
+}
+
+.inventory-select-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: rgba(255, 251, 235, 0.95);
+  flex-wrap: wrap;
+}
+
+.select-toolbar-info {
+  font-weight: 700;
+  color: #92400e;
+  font-size: 15px;
+}
+
+.select-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+
+.btn-danger {
+  background: linear-gradient(90deg, #dc2626, #ef4444);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  box-shadow: 0 12px 30px rgba(220, 38, 38, 0.2);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inventory-bin-card.inventory-bin-selected,
+.inventory-bin-card[class*="inventory-bin-selected"] {
+  border-color: rgba(37, 99, 235, 0.35) !important;
+  background: rgba(219, 234, 254, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  cursor: pointer;
+}
+
+.inventory-bin-checkbox {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  cursor: pointer;
+}
+
+.checkbox-box {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 2px solid rgba(18, 58, 138, 0.25);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.checkbox-box.checked {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.checkbox-box:hover {
+  border-color: #2563eb;
+}
+
 @media (max-width: 900px) {
   .inventory-search-row {
     flex-direction: column;
@@ -873,6 +1102,16 @@ onUnmounted(stopScan);
 
   .inventory-grid {
     grid-template-columns: 1fr;
+  }
+
+  .inventory-select-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .select-toolbar-actions {
+    justify-content: center;
   }
 }
 </style>

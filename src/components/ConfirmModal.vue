@@ -15,7 +15,7 @@ const emit = defineEmits(['confirm', 'cancel']);
         <div class="confirm-backdrop" @click.self="!isLoading && emit('cancel')">
             <div class="confirm-dialog" role="alertdialog" :aria-label="title">
                 <div class="confirm-title">{{ title }}</div>
-                <p v-if="message && !errorMessage" class="confirm-message">{{ message }}</p>
+                <p v-if="message && !errorMessage" class="confirm-message" style="white-space: pre-line;" v-html="message"></p>
                 <p v-if="errorMessage" class="confirm-error" role="alert">{{ errorMessage }}</p>
 
                 <div class="confirm-actions">
