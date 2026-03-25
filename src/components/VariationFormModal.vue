@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 
 const props = defineProps({
     mode: { type: String, required: true },
@@ -19,6 +19,20 @@ const formStyle = ref('');
 const formSize = ref('');
 const validationError = ref('');
 const skuInput = ref(null);
+const dialogRef = ref(null);
+let previousFocus = null;
+
+function onKeydown(e) {
+    if (e.key === 'Escape') { emit('cancel'); return; }
+    if (e.key === 'Tab' && dialogRef.value) {
+        const focusable = dialogRef.value.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+}
 
 const dialogTitle = computed(() => (props.mode === 'create' ? 'Create Variation' : 'Edit Variation'));
 const submitLabel = computed(() => {
@@ -30,6 +44,8 @@ const submitLabel = computed(() => {
 });
 
 onMounted(async () => {
+    previousFocus = document.activeElement;
+    document.addEventListener('keydown', onKeydown);
     if (props.initialVariation) {
         formSku.value = props.initialVariation.sku ?? '';
         formQuantity.value = String(props.initialVariation.quantity ?? 0);
@@ -43,6 +59,11 @@ onMounted(async () => {
 
     await nextTick();
     skuInput.value?.focus();
+});
+
+onUnmounted(() => {
+    document.removeEventListener('keydown', onKeydown);
+    previousFocus?.focus?.();
 });
 
 function onSubmit() {
@@ -72,7 +93,7 @@ function onSubmit() {
 <template>
     <Teleport to="body">
         <div class="entity-modal-backdrop">
-            <div class="entity-modal-dialog" role="dialog" :aria-label="dialogTitle">
+            <div ref="dialogRef" class="entity-modal-dialog" role="dialog" :aria-label="dialogTitle">
                 <div class="entity-modal-header">
                     <div>
                         <div class="entity-modal-title">{{ dialogTitle }}</div>

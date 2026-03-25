@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 // Lazy-loaded at export time to keep initial bundle small
 let docxModule = null;
@@ -18,6 +18,20 @@ const error = ref('');
 const items = ref([]);
 const expandedIds = ref(new Set());
 const isExporting = ref(false);
+const dialogRef = ref(null);
+let previousFocus = null;
+
+function onKeydown(e) {
+  if (e.key === 'Escape') { emit('close'); return; }
+  if (e.key === 'Tab' && dialogRef.value) {
+    const focusable = dialogRef.value.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+}
 
 const sizeOrder = { XS: 0, S: 1, M: 2, L: 3, XL: 4, '2XL': 5, '3XL': 6 };
 
@@ -270,13 +284,22 @@ async function doExport() {
   }
 }
 
-onMounted(fetchData);
+onMounted(() => {
+  previousFocus = document.activeElement;
+  document.addEventListener('keydown', onKeydown);
+  fetchData();
+});
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeydown);
+  previousFocus?.focus?.();
+});
 </script>
 
 <template>
   <Teleport to="body">
     <div class="export-backdrop" @click.self="emit('close')">
-      <div class="export-dialog" role="dialog" aria-label="Export Inventory">
+      <div ref="dialogRef" class="export-dialog" role="dialog" aria-label="Export Inventory">
         <!-- Header -->
         <div class="export-header">
           <div class="export-title">Export Inventory</div>

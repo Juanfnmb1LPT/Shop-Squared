@@ -1,5 +1,7 @@
 <script setup>
-defineProps({
+import { ref, onMounted, onUnmounted } from 'vue';
+
+const props = defineProps({
     title: { type: String, default: 'Are you sure?' },
     message: { type: String, default: '' },
     confirmLabel: { type: String, default: 'Confirm' },
@@ -8,12 +10,48 @@ defineProps({
 });
 
 const emit = defineEmits(['confirm', 'cancel']);
+const dialogRef = ref(null);
+let previousFocus = null;
+
+function onKeydown(e) {
+    if (e.key === 'Escape' && !props.isLoading) {
+        emit('cancel');
+        return;
+    }
+    if (e.key === 'Tab' && dialogRef.value) {
+        const focusable = dialogRef.value.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+}
+
+onMounted(() => {
+    previousFocus = document.activeElement;
+    document.addEventListener('keydown', onKeydown);
+    requestAnimationFrame(() => {
+        const firstBtn = dialogRef.value?.querySelector('button:not([disabled])');
+        firstBtn?.focus();
+    });
+});
+
+onUnmounted(() => {
+    document.removeEventListener('keydown', onKeydown);
+    previousFocus?.focus?.();
+});
 </script>
 
 <template>
     <Teleport to="body">
         <div class="confirm-backdrop" @click.self="!isLoading && emit('cancel')">
-            <div class="confirm-dialog" role="alertdialog" :aria-label="title">
+            <div ref="dialogRef" class="confirm-dialog" role="alertdialog" :aria-label="title">
                 <div class="confirm-title">{{ title }}</div>
                 <p v-if="message && !errorMessage" class="confirm-message" style="white-space: pre-line;" v-html="message"></p>
                 <p v-if="errorMessage" class="confirm-error" role="alert">{{ errorMessage }}</p>

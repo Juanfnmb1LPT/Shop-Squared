@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onMounted, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 
 const props = defineProps({
     mode: { type: String, required: true }, // 'create' | 'edit'
@@ -13,13 +13,34 @@ const emit = defineEmits(['submit', 'cancel', 'delete']);
 const formName = ref('');
 const validationError = ref('');
 const nameInput = ref(null);
+const dialogRef = ref(null);
+let previousFocus = null;
+
+function onKeydown(e) {
+    if (e.key === 'Escape') { emit('cancel'); return; }
+    if (e.key === 'Tab' && dialogRef.value) {
+        const focusable = dialogRef.value.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+}
 
 onMounted(async () => {
+    previousFocus = document.activeElement;
+    document.addEventListener('keydown', onKeydown);
     if (props.initialBin) {
         formName.value = props.initialBin.name ?? '';
     }
     await nextTick();
     nameInput.value?.focus();
+});
+
+onUnmounted(() => {
+    document.removeEventListener('keydown', onKeydown);
+    previousFocus?.focus?.();
 });
 
 function onSubmit() {
@@ -36,6 +57,7 @@ function onSubmit() {
     <Teleport to="body">
         <div class="bin-modal-backdrop" @click.self="emit('cancel')">
             <div
+                ref="dialogRef"
                 class="bin-modal-dialog"
                 role="dialog"
                 :aria-label="mode === 'create' ? 'Create Bin' : 'Edit Bin'"
