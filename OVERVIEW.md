@@ -22,6 +22,7 @@ A browser-based Vue 3 SPA for ecommerce inventory workflows. All CSV/Excel proce
 | Router | Vue Router 4 (hash mode for GitHub Pages) |
 | CSV | PapaParse |
 | Excel | SheetJS (XLSX) |
+| Word Export | docx + file-saver |
 | QR Codes | html5-qrcode (scan), qrcode (generate) |
 | Database | Supabase (PostgreSQL) |
 | Auth | Custom localStorage session (queries Supabase `users` table) |
@@ -51,6 +52,7 @@ src/
 │   ├── ItemFormModal.vue
 │   ├── VariationFormModal.vue
 │   ├── ConfirmModal.vue
+│   ├── ExportPreviewModal.vue       # Preview & export inventory as Word doc (4x3 grid)
 │   ├── InfiniteCarousel.vue         # Step-guide image slider
 │   └── ShopifyExportVariations.vue  # Export DB variations as Shopify CSV
 └── lib/
@@ -105,6 +107,10 @@ Cascading deletes: bin → items → variations.
 - **SKU matching** (`updateInventoryFromSquare.js`): fuzzy header detection + SKU-keyed Map for bulk quantity sync
 - **Size sorting** (BinDetailView, ShopifyExportVariations): `XS→3XL` order, then SKU
 - **QR scanning**: decodes bin ID from QR, navigates to `/search-inventory/:id`
+- **Mass size import** (ItemFormModal): select multiple sizes (XS–3XL) when creating an item to auto-generate variations with SKU pattern `{baseSku}-{size}`
+- **Inline editing** (BinDetailView): click quantity or price on a variation card to edit in-place; Enter/blur to save, Escape to cancel
+- **Mass delete** (SearchInventoryView, BinDetailView): select multiple bins or items and delete them in bulk; trash icons moved inside edit mode for cleaner UX
+- **Word doc export** (ExportPreviewModal): preview all items with toggle selection, exports a `.docx` price sheet in a 4-column × 3-row grid per page with item name, style, color, price, and available sizes
 
 ---
 
@@ -140,10 +146,11 @@ GitHub Pages deployment via Actions. Requires env secrets: `VITE_SUPABASE_URL`, 
 ### Features
 
 - [ ] **Bulk CSV import into inventory DB** — allow uploading a CSV to create/update many items and variations at once (not just quantity sync)
-- [ ] **Bulk delete** — checkboxes + bulk-delete action for items/variations in BinDetailView
+- [x] **Bulk delete** — select multiple bins or items and delete them in bulk
 - [x] **Variation inline editing** — edit quantity/price directly in the table without opening a modal
+- [x] **Mass size import** — select multiple sizes when creating an item to auto-generate variations
+- [x] **Word doc price sheet export** — preview/toggle items and export as a formatted `.docx` grid
 - [ ] **Multi-location Square support** — let user select which Square location's quantity column to use during sync
-- [ ] **Export all bins to CSV** — dump entire inventory DB to a single CSV for backup/review
 - [ ] **Search within BinDetailView** — filter items/variations by SKU or name within a bin
 - [ ] **Item move between bins** — drag or reassign an item to a different bin from BinDetailView
 - [ ] **Duplicate bin/item** — copy a bin or item (with its variations) as a starting point
@@ -151,8 +158,8 @@ GitHub Pages deployment via Actions. Requires env secrets: `VITE_SUPABASE_URL`, 
 ### UX / Polish
 
 - [ ] **Undo delete** — brief toast with undo for accidental deletes (bins, items, variations)
-- [ ] **Empty-state illustrations** — add friendly empty states when a bin has no items or a search returns nothing
-- [ ] **Keyboard navigation** — full keyboard accessibility in modals and tables
+- [x] **Empty-state illustrations** — friendly empty states with icons, contextual messages, and CTAs when bins/items/variations are empty or search returns nothing
+- [x] **Keyboard navigation** — ESC to close all modals, Tab focus trapping within modals, focus restore on close
 - [ ] **Mobile layout for BinDetailView** — variation table is wide and doesn't reflow well on small screens
 - [ ] **Loading skeletons** — replace blank states during Supabase fetches with skeleton placeholders
 - [ ] **Confirm on navigate away** — warn if user has unsaved modal changes and navigates away

@@ -819,19 +819,36 @@ onMounted(loadBinDetail);
               </div>
 
               <div v-else class="inventory-detail-no-items inventory-detail-no-items-inline">
-                No variations found for this item.
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px; opacity: 0.5;">
+                  <circle cx="12" cy="12" r="10" stroke="#9CA3AF" stroke-width="1.5"/>
+                  <line x1="12" y1="8" x2="12" y2="12" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                No variations yet — add a variation to track sizes, colors, and stock.
               </div>
             </div>
           </div>
         </div>
 
         <div v-else class="inventory-detail-no-items">
-          No items are attached to this bin.
+          <svg class="empty-state-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="12" y1="22.08" x2="12" y2="12" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="empty-state-title">No items yet</div>
+          <div class="empty-state-sub">Add your first item to start tracking inventory in this bin.</div>
+          <button class="btn" type="button" @click="openCreateItem">+ Add Item</button>
         </div>
       </div>
     </div>
 
     <div v-else class="inventory-detail-empty reveal-fade-up">
+      <svg class="empty-state-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" stroke="#9CA3AF" stroke-width="1.5"/>
+        <line x1="15" y1="9" x2="9" y2="15" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="9" y1="9" x2="15" y2="15" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
       <div class="hero-title">Bin Not Found</div>
       <div class="hero-sub">{{ errorMessage || 'That bin ID does not exist in Supabase.' }}</div>
       <router-link class="btn" to="/search-inventory">Back to Search</router-link>
@@ -1211,18 +1228,43 @@ onMounted(loadBinDetail);
 }
 
 .inventory-detail-no-items {
-  padding: 18px 0 4px;
+  padding: 32px 0 12px;
   color: #4b5563;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
 
 .inventory-detail-no-items-inline {
-  padding-bottom: 0;
+  padding: 12px 0 0;
+  flex-direction: row;
+  gap: 0;
+  font-size: 13px;
 }
 
 .inventory-detail-empty {
   align-items: center;
   text-align: center;
+}
+
+.empty-state-icon {
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+.empty-state-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #082145;
+}
+
+.empty-state-sub {
+  font-size: 14px;
+  color: #6b7280;
+  max-width: 320px;
+  line-height: 1.5;
 }
 
 @media (max-width: 640px) {

@@ -6,6 +6,7 @@ import { useRouter } from "vue-router";
 import { hasSupabaseConfig, supabase } from "../lib/supabase";
 import ShopifyExportVariations from '../components/ShopifyExportVariations.vue';
 import ExportPreviewModal from '../components/ExportPreviewModal.vue';
+import QrExportModal from '../components/QrExportModal.vue';
 import { createBin, updateBinName, deleteBin } from "../lib/binCrud";
 import BinFormModal from "../components/BinFormModal.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
@@ -25,6 +26,7 @@ let scannerInstance = null;
 let hasHandledDecode = false;
 
 const showExportModal = ref(false);
+const showQrExportModal = ref(false);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const editingBin = ref(null);
@@ -538,6 +540,7 @@ onUnmounted(stopScan);
       </div>
       <div class="hero-actions reveal-fade-up reveal-delay-2">
         <button class="btn" type="button" @click="showExportModal = true">Export Inventory</button>
+        <button class="btn" type="button" @click="showQrExportModal = true">Print QR Labels</button>
         <ShopifyExportVariations compact />
         <button class="btn" type="button" @click="openCreate">+ Create Bin</button>
         <button
@@ -632,7 +635,10 @@ onUnmounted(stopScan);
             <ul class="inventory-preview-list">
               <li v-for="item in bin.items" :key="item.id">{{ item.name }}</li>
               <li v-if="!bin.items.length" class="inventory-preview-empty">
-                No items in this bin.
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Empty bin — tap to add items
               </li>
             </ul>
           </div>
@@ -676,7 +682,17 @@ onUnmounted(stopScan);
         v-if="!isLoading && !errorMessage && !filteredBins.length"
         class="inventory-empty-state"
       >
-        No bins matched that search.
+        <div class="empty-state-content">
+          <svg class="empty-state-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path v-if="searchTerm.trim()" d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM21 21l-4.35-4.35" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path v-else d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline v-if="!searchTerm.trim()" points="3.27 6.96 12 12.01 20.73 6.96" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <line v-if="!searchTerm.trim()" x1="12" y1="22.08" x2="12" y2="12" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="empty-state-title">{{ searchTerm.trim() ? 'No results found' : 'No bins yet' }}</div>
+          <div class="empty-state-sub">{{ searchTerm.trim() ? `Nothing matched "${searchTerm.trim()}". Try a different search.` : 'Create your first bin to start organizing inventory.' }}</div>
+          <button v-if="!searchTerm.trim()" class="btn" type="button" @click="openCreate">+ Create Bin</button>
+        </div>
       </div>
     </div>
 
@@ -714,6 +730,11 @@ onUnmounted(stopScan);
     <ExportPreviewModal
       v-if="showExportModal"
       @close="showExportModal = false"
+    />
+
+    <QrExportModal
+      v-if="showQrExportModal"
+      @close="showQrExportModal = false"
     />
   </div>
 </template>
@@ -994,6 +1015,32 @@ onUnmounted(stopScan);
   grid-column: 1 / -1;
   color: #4b5563;
   text-align: center;
+  padding: 48px 24px;
+}
+
+.empty-state-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.empty-state-icon {
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+.empty-state-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #082145;
+}
+
+.empty-state-sub {
+  font-size: 14px;
+  color: #6b7280;
+  max-width: 300px;
+  line-height: 1.5;
 }
 
 .btn-select-active {

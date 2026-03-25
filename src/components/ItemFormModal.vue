@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps({
     mode: { type: String, required: true },
@@ -20,6 +20,20 @@ const formBinQuery = ref('');
 const isBinListOpen = ref(false);
 const validationError = ref('');
 const nameInput = ref(null);
+const dialogRef = ref(null);
+let previousFocus = null;
+
+function onKeydown(e) {
+    if (e.key === 'Escape') { emit('cancel'); return; }
+    if (e.key === 'Tab' && dialogRef.value) {
+        const focusable = dialogRef.value.querySelectorAll('button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+}
 
 const formBaseSku = ref('');
 const selectedSizes = ref([]);
@@ -56,6 +70,8 @@ const skuPreviewList = computed(() => {
 });
 
 onMounted(async () => {
+    previousFocus = document.activeElement;
+    document.addEventListener('keydown', onKeydown);
     if (props.initialItem) {
         formName.value = props.initialItem.name ?? '';
         formBinId.value = props.initialItem.bin_id ?? props.defaultBinId ?? '';
@@ -67,6 +83,11 @@ onMounted(async () => {
 
     await nextTick();
     nameInput.value?.focus();
+});
+
+onUnmounted(() => {
+    document.removeEventListener('keydown', onKeydown);
+    previousFocus?.focus?.();
 });
 
 watch(
@@ -158,7 +179,7 @@ function onSubmit() {
 <template>
     <Teleport to="body">
         <div class="entity-modal-backdrop" @click.self="emit('cancel')">
-            <div class="entity-modal-dialog" role="dialog" :aria-label="dialogTitle">
+            <div ref="dialogRef" class="entity-modal-dialog" role="dialog" :aria-label="dialogTitle">
                 <div class="entity-modal-header">
                     <div class="entity-modal-title">{{ dialogTitle }}</div>
                     <button class="entity-modal-close" type="button" aria-label="Close" @click="emit('cancel')">
