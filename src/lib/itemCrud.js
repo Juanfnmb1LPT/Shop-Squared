@@ -64,7 +64,7 @@ export async function createItem({ name, binId, baseSku }) {
     return { ok: true, data };
 }
 
-export async function updateItem({ id, name, binId }) {
+export async function updateItem({ id, name, binId, baseSku }) {
     const normalizedId = normalizeId(id);
     const validation = validateItemInput(name, binId);
 
@@ -80,12 +80,15 @@ export async function updateItem({ id, name, binId }) {
         return { ok: false, error: 'Supabase is not configured.' };
     }
 
+    const updates = {
+        name: validation.normalizedName,
+        bin_id: validation.normalizedBinId,
+        base_sku: String(baseSku || '').trim() || null,
+    };
+
     const { data, error } = await supabase
         .from('items')
-        .update({
-            name: validation.normalizedName,
-            bin_id: validation.normalizedBinId,
-        })
+        .update(updates)
         .eq('id', normalizedId)
         .select('id, name, bin_id, base_sku')
         .maybeSingle();

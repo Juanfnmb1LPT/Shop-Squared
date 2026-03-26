@@ -75,6 +75,7 @@ onMounted(async () => {
     if (props.initialItem) {
         formName.value = props.initialItem.name ?? '';
         formBinId.value = props.initialItem.bin_id ?? props.defaultBinId ?? '';
+        formBaseSku.value = props.initialItem.base_sku ?? '';
     } else {
         formBinId.value = props.defaultBinId ?? '';
     }
@@ -162,11 +163,11 @@ function onSubmit() {
     const payload = {
         name: formName.value.trim(),
         binId: String(formBinId.value).trim(),
+        baseSku: formBaseSku.value.trim(),
     };
 
     if (props.mode === 'create') {
         payload.sizes = selectedSizes.value;
-        payload.baseSku = formBaseSku.value.trim();
         payload.price = formPrice.value === '' ? 0 : Number(formPrice.value);
         payload.color = formColor.value.trim();
         payload.style = formStyle.value || null;
@@ -246,23 +247,23 @@ function onSubmit() {
                         </div>
                     </div>
 
+                    <label class="entity-modal-label" for="item-form-base-sku">Base SKU</label>
+                    <input
+                        id="item-form-base-sku"
+                        v-model="formBaseSku"
+                        class="entity-modal-input"
+                        type="text"
+                        autocomplete="off"
+                        placeholder="e.g. TSHIRT-BLK"
+                        :disabled="isSaving"
+                    />
+
                     <!-- Variation generation — create mode only -->
                     <template v-if="mode === 'create'">
                         <div class="variation-gen-divider">
                             <span>Generate Variations</span>
                             <span class="variation-gen-optional">optional</span>
                         </div>
-
-                        <label class="entity-modal-label" for="item-form-base-sku">Base SKU</label>
-                        <input
-                            id="item-form-base-sku"
-                            v-model="formBaseSku"
-                            class="entity-modal-input"
-                            type="text"
-                            autocomplete="off"
-                            placeholder="e.g. TSHIRT-BLK"
-                            :disabled="isSaving"
-                        />
 
                         <label class="entity-modal-label">Sizes</label>
                         <div class="size-chips">

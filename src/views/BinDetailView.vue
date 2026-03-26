@@ -319,10 +319,10 @@ async function onCreateItemSubmit({ name, binId: targetBinId, sizes, baseSku, pr
   });
 }
 
-async function onEditItemSubmit({ name, binId: targetBinId }) {
+async function onEditItemSubmit({ name, binId: targetBinId, baseSku }) {
   isItemSaving.value = true;
   itemModalError.value = '';
-  const result = await updateItem({ id: editingItem.value?.id, name, binId: targetBinId });
+  const result = await updateItem({ id: editingItem.value?.id, name, binId: targetBinId, baseSku });
   isItemSaving.value = false;
 
   if (!result.ok) {
