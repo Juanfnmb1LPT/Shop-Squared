@@ -106,14 +106,14 @@ async function fetchBinRecord() {
 async function fetchItemsForBin() {
   const withTotalsResult = await supabase
     .from('items')
-    .select('id, name, bin_id, total_quantity')
+    .select('id, name, bin_id, base_sku, total_quantity')
     .eq('bin_id', binId.value)
     .order('name', { ascending: true });
 
   if (withTotalsResult.error && /total_quantity|column/i.test(withTotalsResult.error.message || '')) {
     return supabase
       .from('items')
-      .select('id, name, bin_id')
+      .select('id, name, bin_id, base_sku')
       .eq('bin_id', binId.value)
       .order('name', { ascending: true });
   }
@@ -287,7 +287,7 @@ function closeItemDeleteConfirm() {
 async function onCreateItemSubmit({ name, binId: targetBinId, sizes, baseSku, price, color, style }) {
   isItemSaving.value = true;
   itemModalError.value = '';
-  const result = await createItem({ name, binId: targetBinId });
+  const result = await createItem({ name, binId: targetBinId, baseSku });
 
   if (!result.ok) {
     isItemSaving.value = false;
@@ -893,6 +893,7 @@ onMounted(loadBinDetail);
       v-if="showCreateVariationModal"
       mode="create"
       :item-name="selectedVariationItem?.name || ''"
+      :base-sku="selectedVariationItem?.base_sku || ''"
       :is-saving="isVariationSaving"
       :error-message="variationModalError"
       @submit="onCreateVariationSubmit"
@@ -903,6 +904,7 @@ onMounted(loadBinDetail);
       v-if="showEditVariationModal"
       mode="edit"
       :item-name="selectedVariationItem?.name || ''"
+      :base-sku="selectedVariationItem?.base_sku || ''"
       :initial-variation="editingVariation"
       :is-saving="isVariationSaving"
       :error-message="variationModalError"

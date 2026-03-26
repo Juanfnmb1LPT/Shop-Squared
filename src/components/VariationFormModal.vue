@@ -4,6 +4,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 const props = defineProps({
     mode: { type: String, required: true },
     itemName: { type: String, default: '' },
+    baseSku: { type: String, default: '' },
     initialVariation: { type: Object, default: null },
     isSaving: { type: Boolean, default: false },
     errorMessage: { type: String, default: '' },
@@ -55,6 +56,8 @@ onMounted(async () => {
         formColor.value = props.initialVariation.color ?? '';
         formStyle.value = props.initialVariation.style ?? '';
         formSize.value = props.initialVariation.size ?? '';
+    } else if (props.baseSku) {
+        formSku.value = props.baseSku + '-';
     }
 
     await nextTick();
@@ -342,6 +345,7 @@ function onSubmit() {
     background: rgba(255, 220, 220, 0.95);
     border-color: rgba(220, 38, 38, 0.35);
 }
+
 
 @media (max-width: 640px) {
     .entity-modal-form {

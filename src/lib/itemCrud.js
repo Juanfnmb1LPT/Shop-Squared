@@ -27,7 +27,7 @@ function validateItemInput(name, binId) {
     };
 }
 
-export async function createItem({ name, binId }) {
+export async function createItem({ name, binId, baseSku }) {
     const validation = validateItemInput(name, binId);
 
     if (!validation.ok) {
@@ -40,14 +40,21 @@ export async function createItem({ name, binId }) {
 
     const generatedId = crypto.randomUUID();
 
+    const row = {
+        id: generatedId,
+        name: validation.normalizedName,
+        bin_id: validation.normalizedBinId,
+    };
+
+    const trimmedBaseSku = String(baseSku || '').trim();
+    if (trimmedBaseSku) {
+        row.base_sku = trimmedBaseSku;
+    }
+
     const { data, error } = await supabase
         .from('items')
-        .insert({
-            id: generatedId,
-            name: validation.normalizedName,
-            bin_id: validation.normalizedBinId,
-        })
-        .select('id, name, bin_id')
+        .insert(row)
+        .select('id, name, bin_id, base_sku')
         .maybeSingle();
 
     if (error) {
@@ -80,7 +87,7 @@ export async function updateItem({ id, name, binId }) {
             bin_id: validation.normalizedBinId,
         })
         .eq('id', normalizedId)
-        .select('id, name, bin_id')
+        .select('id, name, bin_id, base_sku')
         .maybeSingle();
 
     if (error) {
