@@ -54,7 +54,7 @@ async function fetchBinsWithTotals() {
   const withTotalsResult = await supabase
     .from("bins")
     .select("id, name, total_quantity")
-    .order("id", { ascending: true });
+    .order("name", { ascending: true });
 
   if (
     withTotalsResult.error &&
@@ -63,7 +63,7 @@ async function fetchBinsWithTotals() {
     const fallbackResult = await supabase
       .from("bins")
       .select("id, name")
-      .order("id", { ascending: true });
+      .order("name", { ascending: true });
 
     return { ...fallbackResult, includesTotals: false };
   }

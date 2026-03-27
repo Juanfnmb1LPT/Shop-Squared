@@ -284,7 +284,7 @@ function closeItemDeleteConfirm() {
   itemDeleteMessage.value = '';
 }
 
-async function onCreateItemSubmit({ name, binId: targetBinId, sizes, baseSku, price, color, style }) {
+async function onCreateItemSubmit({ name, binId: targetBinId, genMode, sizes, colors, baseSku, price, color, style }) {
   isItemSaving.value = true;
   itemModalError.value = '';
   const result = await createItem({ name, binId: targetBinId, baseSku });
@@ -295,21 +295,38 @@ async function onCreateItemSubmit({ name, binId: targetBinId, sizes, baseSku, pr
     return;
   }
 
-  if (sizes?.length && result.data?.id) {
-    await Promise.all(
-      sizes.map((size) =>
-        createVariation({
-          itemId: result.data.id,
-          itemName: name,
-          sku: baseSku ? `${baseSku}-${size}` : '',
-          quantity: 0,
-          price: price ?? 0,
-          color: color || '',
-          style: style || null,
-          size,
-        })
-      )
-    );
+  if (result.data?.id) {
+    if (genMode === 'colors' && colors?.length) {
+      await Promise.all(
+        colors.map((c) =>
+          createVariation({
+            itemId: result.data.id,
+            itemName: name,
+            sku: baseSku ? `${baseSku}-${c.abbr}` : '',
+            quantity: 0,
+            price: price ?? 0,
+            color: c.name,
+            style: style || null,
+            size: null,
+          })
+        )
+      );
+    } else if (sizes?.length) {
+      await Promise.all(
+        sizes.map((size) =>
+          createVariation({
+            itemId: result.data.id,
+            itemName: name,
+            sku: baseSku ? `${baseSku}-${size}` : '',
+            quantity: 0,
+            price: price ?? 0,
+            color: color || '',
+            style: style || null,
+            size,
+          })
+        )
+      );
+    }
   }
 
   isItemSaving.value = false;
