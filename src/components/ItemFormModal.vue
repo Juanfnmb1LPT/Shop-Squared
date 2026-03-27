@@ -36,7 +36,11 @@ function onKeydown(e) {
 }
 
 const formBaseSku = ref('');
+const genMode = ref('sizes');
 const selectedSizes = ref([]);
+const colorTags = ref([]);       // [{ name: 'Black', abbr: 'BLK' }, ...]
+const colorNameInput = ref('');
+const colorAbbrInput = ref('');
 const formPrice = ref('');
 const formColor = ref('');
 const formStyle = ref('');
@@ -55,18 +59,37 @@ const filteredBins = computed(() => {
         return searchableText.includes(normalizedQuery);
     });
 });
+const variationCount = computed(() =>
+    genMode.value === 'sizes' ? selectedSizes.value.length : colorTags.value.length
+);
+
 const submitLabel = computed(() => {
     if (props.isSaving) {
         return 'Saving...';
     }
 
-    return props.mode === 'create' ? 'Create Item' : 'Save Changes';
+    if (props.mode === 'edit') return 'Save Changes';
+
+    if (variationCount.value > 0) {
+        return `Create Item + ${variationCount.value} Variation${variationCount.value > 1 ? 's' : ''}`;
+    }
+
+    return 'Create Item';
 });
+
+const hasVariationsSelected = computed(() =>
+    genMode.value === 'sizes' ? selectedSizes.value.length > 0 : colorTags.value.length > 0
+);
 
 const skuPreviewList = computed(() => {
     const base = formBaseSku.value.trim();
-    if (!base || !selectedSizes.value.length) return [];
-    return selectedSizes.value.map((size) => `${base}-${size}`);
+    if (!base) return [];
+    if (genMode.value === 'sizes') {
+        if (!selectedSizes.value.length) return [];
+        return selectedSizes.value.map((size) => `${base}-${size}`);
+    }
+    if (!colorTags.value.length) return [];
+    return colorTags.value.map((c) => `${base}-${c.abbr}`);
 });
 
 onMounted(async () => {
@@ -147,6 +170,20 @@ function toggleSize(size) {
     }
 }
 
+function addColor() {
+    const name = colorNameInput.value.trim();
+    const abbr = colorAbbrInput.value.trim();
+    if (!name || !abbr) return;
+    if (colorTags.value.some((c) => c.abbr === abbr)) return;
+    colorTags.value.push({ name, abbr });
+    colorNameInput.value = '';
+    colorAbbrInput.value = '';
+}
+
+function removeColor(index) {
+    colorTags.value.splice(index, 1);
+}
+
 function onSubmit() {
     validationError.value = '';
 
@@ -167,9 +204,11 @@ function onSubmit() {
     };
 
     if (props.mode === 'create') {
-        payload.sizes = selectedSizes.value;
+        payload.genMode = genMode.value;
+        payload.sizes = genMode.value === 'sizes' ? selectedSizes.value : [];
+        payload.colors = genMode.value === 'colors' ? colorTags.value.map((c) => ({ ...c })) : [];
         payload.price = formPrice.value === '' ? 0 : Number(formPrice.value);
-        payload.color = formColor.value.trim();
+        payload.color = genMode.value === 'sizes' ? formColor.value.trim() : '';
         payload.style = formStyle.value || null;
     }
 
@@ -265,20 +304,90 @@ function onSubmit() {
                             <span class="variation-gen-optional">optional</span>
                         </div>
 
-                        <label class="entity-modal-label">Sizes</label>
-                        <div class="size-chips">
+                        <div class="gen-mode-toggle">
                             <button
-                                v-for="size in ALL_SIZES"
-                                :key="size"
                                 type="button"
-                                class="size-chip"
-                                :class="{ active: selectedSizes.includes(size) }"
+                                class="gen-mode-btn"
+                                :class="{ active: genMode === 'sizes' }"
                                 :disabled="isSaving"
-                                @click="toggleSize(size)"
-                            >
-                                {{ size }}
-                            </button>
+                                @click="genMode = 'sizes'"
+                            >Sizes</button>
+                            <button
+                                type="button"
+                                class="gen-mode-btn"
+                                :class="{ active: genMode === 'colors' }"
+                                :disabled="isSaving"
+                                @click="genMode = 'colors'"
+                            >Colors</button>
                         </div>
+
+                        <!-- Size chips -->
+                        <template v-if="genMode === 'sizes'">
+                            <label class="entity-modal-label">Sizes</label>
+                            <div class="size-chips">
+                                <button
+                                    v-for="size in ALL_SIZES"
+                                    :key="size"
+                                    type="button"
+                                    class="size-chip"
+                                    :class="{ active: selectedSizes.includes(size) }"
+                                    :disabled="isSaving"
+                                    @click="toggleSize(size)"
+                                >
+                                    {{ size }}
+                                </button>
+                            </div>
+                        </template>
+
+                        <!-- Color tags -->
+                        <template v-if="genMode === 'colors'">
+                            <div class="color-add-row">
+                                <div class="color-add-field">
+                                    <label class="entity-modal-label" for="item-form-color-name">Color Name</label>
+                                    <input
+                                        id="item-form-color-name"
+                                        v-model="colorNameInput"
+                                        class="entity-modal-input"
+                                        type="text"
+                                        autocomplete="off"
+                                        placeholder="e.g. Black"
+                                        :disabled="isSaving"
+                                        @keydown.enter.prevent
+                                    />
+                                </div>
+                                <div class="color-add-field">
+                                    <label class="entity-modal-label" for="item-form-color-abbr">SKU Abbr</label>
+                                    <input
+                                        id="item-form-color-abbr"
+                                        v-model="colorAbbrInput"
+                                        class="entity-modal-input"
+                                        type="text"
+                                        autocomplete="off"
+                                        placeholder="e.g. BLK"
+                                        :disabled="isSaving"
+                                        @keydown.enter.prevent
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    class="color-add-btn"
+                                    :disabled="isSaving || !colorNameInput.trim() || !colorAbbrInput.trim()"
+                                    @click="addColor"
+                                >+</button>
+                            </div>
+
+                            <div v-if="colorTags.length" class="color-tag-list">
+                                <div
+                                    v-for="(color, i) in colorTags"
+                                    :key="color.abbr"
+                                    class="color-tag"
+                                >
+                                    <span class="color-tag-name">{{ color.name }}</span>
+                                    <span class="color-tag-abbr">{{ color.abbr }}</span>
+                                    <button type="button" class="color-tag-remove" @click="removeColor(i)">&times;</button>
+                                </div>
+                            </div>
+                        </template>
 
                         <div v-if="skuPreviewList.length" class="sku-preview">
                             <span
@@ -287,7 +396,7 @@ function onSubmit() {
                             >{{ sku }}<span v-if="i < skuPreviewList.length - 1" class="sku-preview-sep"> · </span></span>
                         </div>
 
-                        <template v-if="selectedSizes.length">
+                        <template v-if="hasVariationsSelected">
                             <div class="variation-shared-grid">
                                 <div>
                                     <label class="entity-modal-label" for="item-form-price">Price</label>
@@ -318,16 +427,18 @@ function onSubmit() {
                                 </div>
                             </div>
 
-                            <label class="entity-modal-label" for="item-form-color">Color</label>
-                            <input
-                                id="item-form-color"
-                                v-model="formColor"
-                                class="entity-modal-input"
-                                type="text"
-                                autocomplete="off"
-                                placeholder="e.g. Black"
-                                :disabled="isSaving"
-                            />
+                            <template v-if="genMode === 'sizes'">
+                                <label class="entity-modal-label" for="item-form-color">Color</label>
+                                <input
+                                    id="item-form-color"
+                                    v-model="formColor"
+                                    class="entity-modal-input"
+                                    type="text"
+                                    autocomplete="off"
+                                    placeholder="e.g. Black"
+                                    :disabled="isSaving"
+                                />
+                            </template>
                         </template>
                     </template>
 
@@ -374,9 +485,10 @@ function onSubmit() {
 
 .entity-modal-dialog {
     width: 100%;
-    max-width: 460px;
+    max-width: 540px;
     max-height: 90vh;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 28px 28px 24px;
     border-radius: 20px;
     background: #ffffff;
@@ -551,6 +663,132 @@ function onSubmit() {
     letter-spacing: 0.07em;
     text-transform: uppercase;
     color: #082145;
+}
+
+.gen-mode-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid rgba(18, 58, 138, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.gen-mode-btn {
+    flex: 1;
+    height: 38px;
+    border: 0;
+    background: rgba(244, 248, 255, 0.96);
+    color: #4b5563;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+
+.gen-mode-btn + .gen-mode-btn {
+    border-left: 1px solid rgba(18, 58, 138, 0.2);
+}
+
+.gen-mode-btn.active {
+    background: #0b63d6;
+    color: #ffffff;
+}
+
+.gen-mode-btn:hover:not(.active):not(:disabled) {
+    background: rgba(11, 99, 214, 0.08);
+    color: #0b63d6;
+}
+
+.color-add-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px;
+    align-items: end;
+}
+
+.color-add-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.color-add-field .entity-modal-input {
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.color-add-btn {
+    height: 46px;
+    width: 40px;
+    flex-shrink: 0;
+    border: 1px solid rgba(18, 58, 138, 0.2);
+    border-radius: 12px;
+    background: #0b63d6;
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.color-add-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.color-add-btn:hover:not(:disabled) {
+    background: #0952b3;
+}
+
+.color-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.color-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #0b63d6;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.color-tag-name {
+    opacity: 0.9;
+}
+
+.color-tag-abbr {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.color-tag-remove {
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+}
+
+.color-tag-remove:hover {
+    color: #ffffff;
 }
 
 .variation-gen-optional {
