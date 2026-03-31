@@ -299,10 +299,10 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <div class="export-backdrop" @click.self="emit('close')">
-      <div ref="dialogRef" class="export-dialog" role="dialog" aria-label="Export Inventory">
+      <div ref="dialogRef" class="export-dialog" role="dialog" aria-label="Print Inventory">
         <!-- Header -->
         <div class="export-header">
-          <div class="export-title">Export Inventory</div>
+          <div class="export-title">Print Inventory</div>
           <button class="export-close-btn" type="button" aria-label="Close" @click="emit('close')">&#x2715;</button>
         </div>
 

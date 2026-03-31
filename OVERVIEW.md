@@ -52,7 +52,8 @@ src/
 │   ├── ItemFormModal.vue
 │   ├── VariationFormModal.vue
 │   ├── ConfirmModal.vue
-│   ├── ExportPreviewModal.vue       # Preview & export inventory as Word doc (4x3 grid)
+│   ├── ExportPreviewModal.vue       # Preview & print inventory as Word doc (4x3 grid)
+│   ├── QrExportModal.vue            # Mass QR code label printing
 │   ├── InfiniteCarousel.vue         # Step-guide image slider
 │   └── ShopifyExportVariations.vue  # Export DB variations as Shopify CSV
 └── lib/
@@ -93,7 +94,7 @@ All routes except `/login` require auth.
 ```
 users             — id, username, password
 bins              — id, name
-items             — id, name, bin_id
+items             — id, name, bin_id, base_sku
 item_variations   — id, item_id, item_name, sku, quantity, price, color, style, size
 ```
 
@@ -107,10 +108,13 @@ Cascading deletes: bin → items → variations.
 - **SKU matching** (`updateInventoryFromSquare.js`): fuzzy header detection + SKU-keyed Map for bulk quantity sync
 - **Size sorting** (BinDetailView, ShopifyExportVariations): `XS→3XL` order, then SKU
 - **QR scanning**: decodes bin ID from QR, navigates to `/search-inventory/:id`
-- **Mass size import** (ItemFormModal): select multiple sizes (XS–3XL) when creating an item to auto-generate variations with SKU pattern `{baseSku}-{size}`
+- **Mass variation generation** (ItemFormModal): toggle between Sizes or Colors mode when creating an item; sizes use chip selectors (XS–3XL), colors use a name + SKU abbreviation entry form; auto-generates variations with SKU pattern `{baseSku}-{size}` or `{baseSku}-{abbr}`
+- **Base SKU** (items table): stored on the item record; editable in both create and edit item modals; auto-fills the SKU field with `{baseSku}-` when creating new variations
 - **Inline editing** (BinDetailView): click quantity or price on a variation card to edit in-place; Enter/blur to save, Escape to cancel
+- **Quick quantity increment** (BinDetailView): +1 button on each variation card to increment quantity with a single click
 - **Mass delete** (SearchInventoryView, BinDetailView): select multiple bins or items and delete them in bulk; trash icons moved inside edit mode for cleaner UX
-- **Word doc export** (ExportPreviewModal): preview all items with toggle selection, exports a `.docx` price sheet in a 4-column × 3-row grid per page with item name, style, color, price, and available sizes
+- **Word doc print** (ExportPreviewModal): preview all items with toggle selection, exports a `.docx` price sheet in a 4-column × 3-row grid per page with item name, style, color, price, and available sizes
+- **Mass QR code printing** (QrExportModal): select bins and print QR code labels in bulk
 
 ---
 
@@ -130,7 +134,7 @@ GitHub Pages deployment via Actions. Requires env secrets: `VITE_SUPABASE_URL`, 
 ## Current Limitations / Known Issues
 
 - **No global state management** (no Pinia/Vuex) — all state is local or fetched live from Supabase; no caching
-- **No batch delete** in inventory UI — items/variations must be deleted one at a time
+- **Bin sorting** — bins are sorted alphabetically by name across all views
 - **QR scan requires HTTPS or localhost** — won't work on plain HTTP
 - **Excel support** — only reads the first sheet of multi-sheet workbooks
 - **Single location** — Square quantity sync assumes a single store location; multi-location not supported
@@ -148,8 +152,12 @@ GitHub Pages deployment via Actions. Requires env secrets: `VITE_SUPABASE_URL`, 
 - [ ] **Bulk CSV import into inventory DB** — allow uploading a CSV to create/update many items and variations at once (not just quantity sync)
 - [x] **Bulk delete** — select multiple bins or items and delete them in bulk
 - [x] **Variation inline editing** — edit quantity/price directly in the table without opening a modal
-- [x] **Mass size import** — select multiple sizes when creating an item to auto-generate variations
-- [x] **Word doc price sheet export** — preview/toggle items and export as a formatted `.docx` grid
+- [x] **Mass variation generation** — select sizes or colors when creating an item to auto-generate variations (sizes via chips, colors via name + abbreviation)
+- [x] **Base SKU on items** — stored on item record, editable in create/edit, auto-fills variation SKU field
+- [x] **Quick quantity increment** — +1 button on variation cards for fast counting
+- [x] **Word doc price sheet print** — preview/toggle items and export as a formatted `.docx` grid
+- [x] **Mass QR code printing** — select bins and print QR labels in bulk
+- [x] **Alphabetical bin sorting** — bins sorted by name across all views
 - [ ] **Multi-location Square support** — let user select which Square location's quantity column to use during sync
 - [ ] **Search within BinDetailView** — filter items/variations by SKU or name within a bin
 - [ ] **Item move between bins** — drag or reassign an item to a different bin from BinDetailView

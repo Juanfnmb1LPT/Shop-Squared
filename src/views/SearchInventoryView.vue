@@ -4,9 +4,6 @@ import QRCode from "qrcode";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { hasSupabaseConfig, supabase } from "../lib/supabase";
-import ShopifyExportVariations from '../components/ShopifyExportVariations.vue';
-import ExportPreviewModal from '../components/ExportPreviewModal.vue';
-import QrExportModal from '../components/QrExportModal.vue';
 import { createBin, updateBinName, deleteBin } from "../lib/binCrud";
 import BinFormModal from "../components/BinFormModal.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
@@ -25,8 +22,6 @@ const printingBinId = ref("");
 let scannerInstance = null;
 let hasHandledDecode = false;
 
-const showExportModal = ref(false);
-const showQrExportModal = ref(false);
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
 const editingBin = ref(null);
@@ -539,9 +534,6 @@ onUnmounted(stopScan);
         Search bins by ID or name from Supabase inventory data.
       </div>
       <div class="hero-actions reveal-fade-up reveal-delay-2">
-        <button class="btn" type="button" @click="showExportModal = true">Export Inventory</button>
-        <button class="btn" type="button" @click="showQrExportModal = true">Print QR Labels</button>
-        <ShopifyExportVariations compact />
         <button class="btn" type="button" @click="openCreate">+ Create Bin</button>
         <button
           class="btn"
@@ -727,15 +719,6 @@ onUnmounted(stopScan);
       @cancel="showDeleteConfirm = false; deletingBin = null; deleteError = ''; deleteConfirmMessage = ''"
     />
 
-    <ExportPreviewModal
-      v-if="showExportModal"
-      @close="showExportModal = false"
-    />
-
-    <QrExportModal
-      v-if="showQrExportModal"
-      @close="showQrExportModal = false"
-    />
   </div>
 </template>
 

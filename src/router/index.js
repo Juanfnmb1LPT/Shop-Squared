@@ -10,6 +10,7 @@ const UpdateQuantityView = () => import('../views/UpdateQuantityView.vue');
 const UpdateInventoryView = () => import('../views/UpdateInventoryView.vue');
 const SearchInventoryView = () => import('../views/SearchInventoryView.vue');
 const BinDetailView = () => import('../views/BinDetailView.vue');
+const ReportsView = () => import('../views/ReportsView.vue');
 
 const router = createRouter({
     history: createWebHashHistory(),
@@ -22,6 +23,7 @@ const router = createRouter({
         { path: '/update-quantity', name: 'update-quantity', component: UpdateQuantityView, meta: { requiresAuth: true } },
         { path: '/update-inventory', name: 'update-inventory', component: UpdateInventoryView, meta: { requiresAuth: true } },
         { path: '/search-inventory', name: 'search-inventory', component: SearchInventoryView, meta: { requiresAuth: true } },
+        { path: '/reports', name: 'reports', component: ReportsView, meta: { requiresAuth: true } },
         { path: '/search-inventory/:id', name: 'bin-detail', component: BinDetailView, meta: { requiresAuth: true } },
         { path: '/:pathMatch(.*)*', redirect: '/' },
     ],

@@ -541,6 +541,53 @@ async function commitInlineEdit(variation, item) {
   }
 }
 
+async function incrementQuantity(variation, item) {
+  if (inlineSavingId.value === variation.id) return;
+  inlineSavingId.value = variation.id;
+  inlineSaveError.value = '';
+
+  const newQty = (variation.quantity ?? 0) + 1;
+
+  const result = await updateVariation({
+    id: variation.id,
+    itemId: item.id,
+    itemName: item.name,
+    sku: variation.sku,
+    quantity: newQty,
+    price: variation.price,
+    color: variation.color,
+    style: variation.style,
+    size: variation.size,
+  });
+
+  inlineSavingId.value = null;
+
+  if (!result.ok) {
+    inlineSaveError.value = result.error;
+    return;
+  }
+
+  const varList = variationsByItemId.value[item.id];
+  if (varList) {
+    const idx = varList.findIndex((v) => v.id === variation.id);
+    if (idx !== -1) {
+      varList[idx] = { ...varList[idx], quantity: newQty };
+    }
+  }
+
+  const newItemTotal = (variationsByItemId.value[item.id] || [])
+    .reduce((sum, v) => sum + normalizeQuantityTotal(v.quantity), 0);
+
+  items.value = items.value.map((i) =>
+    i.id === item.id ? { ...i, total_quantity: newItemTotal } : i
+  );
+
+  const newBinTotal = items.value.reduce((sum, i) => sum + normalizeQuantityTotal(i.total_quantity), 0);
+  if (bin.value) {
+    bin.value = { ...bin.value, total_quantity: newBinTotal };
+  }
+}
+
 function openEdit() {
   modalError.value = '';
   showEditModal.value = true;
@@ -792,6 +839,13 @@ onMounted(loadBinDetail);
                         title="Click to edit"
                         @click="startInlineEdit(variation, 'quantity')"
                       >{{ variation.quantity ?? '—' }}</span>
+                      <button
+                        type="button"
+                        class="qty-increment-btn"
+                        title="+1"
+                        :disabled="inlineSavingId === variation.id"
+                        @click="incrementQuantity(variation, item)"
+                      >+1</button>
                     </div>
 
                     <div class="variation-inline-field">
@@ -1219,6 +1273,30 @@ onMounted(loadBinDetail);
 .variation-inline-value.saving {
   opacity: 0.5;
   cursor: default;
+}
+
+.qty-increment-btn {
+  height: 28px;
+  min-width: 34px;
+  padding: 0 8px;
+  border: 1px solid rgba(11, 99, 214, 0.25);
+  border-radius: 8px;
+  background: rgba(11, 99, 214, 0.08);
+  color: #0b63d6;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.qty-increment-btn:hover:not(:disabled) {
+  background: #0b63d6;
+  color: #ffffff;
+}
+
+.qty-increment-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .variation-inline-input {

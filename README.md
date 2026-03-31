@@ -15,8 +15,13 @@ All parsing and processing runs locally in the browser. No file data is uploaded
 - Search Inventory with QR scan support for bin lookup and auto-navigation
 - Bin CRUD from Search Inventory
 - Item and variation CRUD from the Bin Detail page
-- Auto-generate size variations when creating an item — select sizes (XS–3XL), set a base SKU, price, color, and style; variations are batch-created with SKUs like `TSHIRT-BLK-XS`, `TSHIRT-BLK-M`, etc.
+- Auto-generate variations when creating an item — toggle between Sizes (XS–3XL chips) or Colors (name + SKU abbreviation entry); variations are batch-created with SKUs like `TSHIRT-BLK-XS` or `TSHIRT-BLK`
+- Base SKU stored on items — editable in create and edit item modals; auto-fills the SKU field when adding new variations
 - Inline quantity and price editing on variation cards — click to edit, Enter or blur to save, Escape to cancel
+- Quick +1 quantity button on each variation card for fast counting
+- Mass QR code label printing — select bins and print QR labels in bulk
+- Print inventory as a formatted Word doc price sheet (4x3 grid per page)
+- Bins sorted alphabetically by name across all views
 
 ## Run locally
 
@@ -90,12 +95,14 @@ The app uses a persistent left dashboard for navigation between all pages.
 - `src/views/ShopifyToSquareView.vue` Shopify → Square UI
 - `src/views/UpdateQuantityView.vue` Quantity update UI
 - `src/views/SearchInventoryView.vue` Bin search and bin CRUD UI
-- `src/views/BinDetailView.vue` Bin detail plus item and variation CRUD UI (inline qty/price editing)
+- `src/views/BinDetailView.vue` Bin detail plus item and variation CRUD UI (inline qty/price editing, +1 quantity button)
 - `src/views/UpdateInventoryView.vue` Bulk DB update from uploaded Shopify or Square CSV
-- `src/components/ItemFormModal.vue` Create/edit item — includes size variation auto-generator
-- `src/components/VariationFormModal.vue` Create/edit individual variation
+- `src/components/ItemFormModal.vue` Create/edit item — includes size/color variation auto-generator and base SKU
+- `src/components/VariationFormModal.vue` Create/edit individual variation (auto-fills base SKU)
 - `src/components/BinFormModal.vue` Create/edit bin
 - `src/components/ConfirmModal.vue` Generic delete confirmation
+- `src/components/QrExportModal.vue` Mass QR code label printing
+- `src/components/ExportPreviewModal.vue` Print inventory as Word doc price sheet
 - `src/lib/convertShopToSquare.js` Shopify → Square transformation logic
 - `src/lib/updateInventoryFromSquare.js` Quantity sync logic (Square → DB)
 - `src/lib/updateInventoryFromShopify.js` Quantity sync logic (Shopify → DB)
