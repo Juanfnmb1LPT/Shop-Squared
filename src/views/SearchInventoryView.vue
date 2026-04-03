@@ -287,6 +287,13 @@ const filteredBins = computed(() => {
   });
 });
 
+const grandTotalQuantity = computed(() => {
+  return filteredBins.value.reduce(
+    (sum, bin) => sum + normalizeQuantityTotal(bin.total_quantity),
+    0,
+  );
+});
+
 function openCreate() {
   modalError.value = "";
   showCreateModal.value = true;
@@ -546,6 +553,7 @@ onUnmounted(stopScan);
       </div>
     </div>
 <div class="inventory-total">Total Item Types: {{ totalVariations === null ? '—' : totalVariations }}</div>
+    <div class="inventory-total">Total Quantity Across All Bins: {{ grandTotalQuantity }}</div>
     <div class="inventory-search-panel reveal-fade-up reveal-delay-1">
       <label class="inventory-search-label" for="inventory-search-input"
         >Search bins</label
