@@ -148,6 +148,29 @@ export async function updateVariation({ id, itemId, itemName, quantity, price, s
     return { ok: true, data };
 }
 
+export async function resetItemVariationQuantities(itemId) {
+    const normalizedItemId = normalizeId(itemId);
+
+    if (!normalizedItemId) {
+        return { ok: false, error: 'Item id is required.' };
+    }
+
+    if (!hasSupabaseConfig || !supabase) {
+        return { ok: false, error: 'Supabase is not configured.' };
+    }
+
+    const { error } = await supabase
+        .from('item_variations')
+        .update({ quantity: 0 })
+        .eq('item_id', normalizedItemId);
+
+    if (error) {
+        return { ok: false, error: error.message };
+    }
+
+    return { ok: true };
+}
+
 export async function deleteVariation(id) {
     const normalizedId = normalizeId(id);
 

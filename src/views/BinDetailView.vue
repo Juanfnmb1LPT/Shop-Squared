@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { updateBinName, deleteBin } from '../lib/binCrud';
 import { createItem, updateItem, deleteItem } from '../lib/itemCrud';
-import { createVariation, updateVariation, deleteVariation } from '../lib/variationCrud';
+import { createVariation, updateVariation, deleteVariation, resetItemVariationQuantities } from '../lib/variationCrud';
 import BinFormModal from '../components/BinFormModal.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import ItemFormModal from '../components/ItemFormModal.vue';
@@ -38,6 +38,11 @@ const deletingItem = ref(null);
 const isItemDeleting = ref(false);
 const itemDeleteError = ref('');
 const itemDeleteMessage = ref('');
+
+const showResetQtyConfirm = ref(false);
+const resetQtyItem = ref(null);
+const isResettingQty = ref(false);
+const resetQtyError = ref('');
 
 const showCreateVariationModal = ref(false);
 const showEditVariationModal = ref(false);
@@ -713,6 +718,50 @@ function onEditItemDelete() {
   }
 }
 
+function onResetItemQuantities() {
+  const item = editingItem.value;
+  if (!item) return;
+  closeItemModal();
+  resetQtyItem.value = item;
+  resetQtyError.value = '';
+  showResetQtyConfirm.value = true;
+}
+
+async function onResetQtyConfirm() {
+  const item = resetQtyItem.value;
+  if (!item) return;
+
+  isResettingQty.value = true;
+  resetQtyError.value = '';
+
+  const result = await resetItemVariationQuantities(item.id);
+
+  if (!result.ok) {
+    resetQtyError.value = result.error;
+    isResettingQty.value = false;
+    return;
+  }
+
+  // Update local state
+  const varList = variationsByItemId.value[item.id];
+  if (varList) {
+    variationsByItemId.value[item.id] = varList.map((v) => ({ ...v, quantity: 0 }));
+  }
+
+  items.value = items.value.map((i) =>
+    i.id === item.id ? { ...i, total_quantity: 0 } : i
+  );
+
+  const newBinTotal = items.value.reduce((sum, i) => sum + normalizeQuantityTotal(i.total_quantity), 0);
+  if (bin.value) {
+    bin.value = { ...bin.value, total_quantity: newBinTotal };
+  }
+
+  isResettingQty.value = false;
+  showResetQtyConfirm.value = false;
+  resetQtyItem.value = null;
+}
+
 function toggleItemSelectMode() {
   itemSelectMode.value = !itemSelectMode.value;
   if (!itemSelectMode.value) {
@@ -1034,6 +1083,7 @@ onMounted(loadBinDetail);
       @submit="onEditItemSubmit"
       @cancel="closeItemModal"
       @delete="onEditItemDelete"
+      @reset-quantities="onResetItemQuantities"
     />
 
     <VariationFormModal
@@ -1105,6 +1155,17 @@ onMounted(loadBinDetail);
       :error-message="massItemDeleteError"
       @confirm="onMassItemDeleteConfirm"
       @cancel="showMassItemDeleteConfirm = false; massItemDeleteError = ''; massItemDeleteProgress = ''"
+    />
+
+    <ConfirmModal
+      v-if="showResetQtyConfirm"
+      title="Reset Quantities"
+      :message="`Are you sure you want to reset the quantities to 0 for all variations of ${resetQtyItem?.name}?`"
+      confirm-label="Reset"
+      :is-loading="isResettingQty"
+      :error-message="resetQtyError"
+      @confirm="onResetQtyConfirm"
+      @cancel="showResetQtyConfirm = false; resetQtyError = ''; resetQtyItem = null"
     />
   </div>
 </template>

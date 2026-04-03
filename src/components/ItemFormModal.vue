@@ -10,7 +10,7 @@ const props = defineProps({
     errorMessage: { type: String, default: '' },
 });
 
-const emit = defineEmits(['submit', 'cancel', 'delete']);
+const emit = defineEmits(['submit', 'cancel', 'delete', 'reset-quantities']);
 
 const ALL_SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
 
@@ -517,6 +517,9 @@ function onSubmit() {
                                 <path d="M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
+                        <button v-if="mode === 'edit'" class="entity-modal-reset-qty-btn" type="button" :disabled="isSaving" @click="emit('reset-quantities')" title="Reset quantities">
+                            Reset QTYS
+                        </button>
                         <div class="entity-modal-actions-right">
                             <button class="btn secondary" type="button" :disabled="isSaving" @click="emit('cancel')">
                                 Cancel
@@ -683,6 +686,7 @@ function onSubmit() {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     margin-top: 10px;
 }
 
@@ -707,6 +711,26 @@ function onSubmit() {
 }
 
 .entity-modal-delete-btn:hover {
+    background: rgba(255, 220, 220, 0.95);
+    border-color: rgba(220, 38, 38, 0.35);
+}
+
+.entity-modal-reset-qty-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    background: rgba(255, 238, 238, 0.95);
+    color: #991b1b;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.entity-modal-reset-qty-btn:hover {
     background: rgba(255, 220, 220, 0.95);
     border-color: rgba(220, 38, 38, 0.35);
 }
