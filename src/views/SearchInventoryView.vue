@@ -1,7 +1,7 @@
 <script setup>
 import { Html5Qrcode } from "html5-qrcode";
 import QRCode from "qrcode";
-import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { hasSupabaseConfig, supabase } from "../lib/supabase";
 import { createBin, updateBinName, deleteBin } from "../lib/binCrud";
@@ -9,7 +9,16 @@ import BinFormModal from "../components/BinFormModal.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
 
 const router = useRouter();
-const searchTerm = ref("");
+const searchTerm = ref(sessionStorage.getItem("inventory-search") || "");
+
+watch(searchTerm, (value) => {
+  if (value.trim()) {
+    sessionStorage.setItem("inventory-search", value.trim());
+  } else {
+    sessionStorage.removeItem("inventory-search");
+  }
+});
+
 const bins = ref([]);
 const totalVariations = ref(null);
 const isLoading = ref(true);
