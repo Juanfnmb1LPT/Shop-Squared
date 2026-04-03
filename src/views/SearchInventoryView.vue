@@ -297,7 +297,7 @@ const filteredBins = computed(() => {
 });
 
 const grandTotalQuantity = computed(() => {
-  return filteredBins.value.reduce(
+  return bins.value.reduce(
     (sum, bin) => sum + normalizeQuantityTotal(bin.total_quantity),
     0,
   );
