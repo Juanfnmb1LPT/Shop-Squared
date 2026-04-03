@@ -106,14 +106,14 @@ async function fetchBinRecord() {
 async function fetchItemsForBin() {
   const withTotalsResult = await supabase
     .from('items')
-    .select('id, name, bin_id, base_sku, total_quantity')
+    .select('id, name, bin_id, base_sku, shared_price, shared_color, shared_style, variation_type, total_quantity')
     .eq('bin_id', binId.value)
     .order('name', { ascending: true });
 
   if (withTotalsResult.error && /total_quantity|column/i.test(withTotalsResult.error.message || '')) {
     return supabase
       .from('items')
-      .select('id, name, bin_id, base_sku')
+      .select('id, name, bin_id, base_sku, shared_price, shared_color, shared_style, variation_type')
       .eq('bin_id', binId.value)
       .order('name', { ascending: true });
   }
@@ -287,7 +287,16 @@ function closeItemDeleteConfirm() {
 async function onCreateItemSubmit({ name, binId: targetBinId, genMode, sizes, colors, baseSku, price, color, style }) {
   isItemSaving.value = true;
   itemModalError.value = '';
-  const result = await createItem({ name, binId: targetBinId, baseSku });
+  const hasVariations = (genMode === 'colors' && colors?.length) || (genMode === 'sizes' && sizes?.length);
+  const result = await createItem({
+    name,
+    binId: targetBinId,
+    baseSku,
+    sharedPrice: hasVariations ? (price ?? null) : null,
+    sharedColor: (genMode === 'sizes' && hasVariations) ? (color || null) : null,
+    sharedStyle: hasVariations ? (style || null) : null,
+    variationType: hasVariations ? genMode : null,
+  });
 
   if (!result.ok) {
     isItemSaving.value = false;
@@ -336,10 +345,20 @@ async function onCreateItemSubmit({ name, binId: targetBinId, genMode, sizes, co
   });
 }
 
-async function onEditItemSubmit({ name, binId: targetBinId, baseSku }) {
+async function onEditItemSubmit({ name, binId: targetBinId, baseSku, sharedPrice, sharedColor, sharedStyle, variationType, oldBaseSku }) {
   isItemSaving.value = true;
   itemModalError.value = '';
-  const result = await updateItem({ id: editingItem.value?.id, name, binId: targetBinId, baseSku });
+  const result = await updateItem({
+    id: editingItem.value?.id,
+    name,
+    binId: targetBinId,
+    baseSku,
+    sharedPrice,
+    sharedColor,
+    sharedStyle,
+    variationType,
+    oldBaseSku,
+  });
   isItemSaving.value = false;
 
   if (!result.ok) {
@@ -965,6 +984,9 @@ onMounted(loadBinDetail);
       mode="create"
       :item-name="selectedVariationItem?.name || ''"
       :base-sku="selectedVariationItem?.base_sku || ''"
+      :default-price="selectedVariationItem?.shared_price"
+      :default-color="selectedVariationItem?.shared_color"
+      :default-style="selectedVariationItem?.shared_style"
       :is-saving="isVariationSaving"
       :error-message="variationModalError"
       @submit="onCreateVariationSubmit"

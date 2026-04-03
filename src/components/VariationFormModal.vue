@@ -5,6 +5,9 @@ const props = defineProps({
     mode: { type: String, required: true },
     itemName: { type: String, default: '' },
     baseSku: { type: String, default: '' },
+    defaultPrice: { type: Number, default: null },
+    defaultColor: { type: String, default: null },
+    defaultStyle: { type: String, default: null },
     initialVariation: { type: Object, default: null },
     isSaving: { type: Boolean, default: false },
     errorMessage: { type: String, default: '' },
@@ -56,8 +59,11 @@ onMounted(async () => {
         formColor.value = props.initialVariation.color ?? '';
         formStyle.value = props.initialVariation.style ?? '';
         formSize.value = props.initialVariation.size ?? '';
-    } else if (props.baseSku) {
-        formSku.value = props.baseSku + '-';
+    } else {
+        if (props.baseSku) formSku.value = props.baseSku + '-';
+        if (props.defaultPrice != null) formPrice.value = String(props.defaultPrice);
+        if (props.defaultColor) formColor.value = props.defaultColor;
+        if (props.defaultStyle) formStyle.value = props.defaultStyle;
     }
 
     await nextTick();
