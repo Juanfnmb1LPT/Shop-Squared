@@ -625,7 +625,10 @@ onUnmounted(stopScan);
             <div class="inventory-bin-summary">Items: {{ bin.items.length }}</div>
 
             <ul class="inventory-preview-list">
-              <li v-for="item in bin.items" :key="item.id">{{ item.name }}</li>
+              <li v-for="item in bin.items.slice(0, 5)" :key="item.id">{{ item.name }}</li>
+              <li v-if="bin.items.length > 5" class="inventory-preview-more">
+                + {{ bin.items.length - 5 }} more item{{ bin.items.length - 5 === 1 ? '' : 's' }}
+              </li>
               <li v-if="!bin.items.length" class="inventory-preview-empty">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px;">
                   <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -823,8 +826,8 @@ onUnmounted(stopScan);
 
 @media (max-width: 640px) {
   .inventory-hero .hero-actions {
-    flex-direction: column;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -985,6 +988,14 @@ onUnmounted(stopScan);
   gap: 8px;
   color: #0f1f46;
   text-align: left;
+}
+
+.inventory-preview-more {
+  color: #0b63d6;
+  font-weight: 600;
+  font-size: 13px;
+  list-style: none;
+  margin-left: -18px;
 }
 
 .inventory-preview-empty {

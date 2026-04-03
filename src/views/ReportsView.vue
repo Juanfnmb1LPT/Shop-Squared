@@ -146,4 +146,38 @@ const showLowStockModal = ref(false);
 .report-card-action {
   margin-top: 4px;
 }
+
+@media (max-width: 768px) {
+  .reports-hero {
+    padding: 32px 16px 24px;
+  }
+
+  .reports-grid {
+    grid-template-columns: 1fr;
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .report-card {
+    padding: 22px 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .reports-hero {
+    padding: 24px 12px 16px;
+  }
+
+  .hero-title {
+    font-size: 1.5rem;
+  }
+
+  .reports-grid {
+    padding: 0 12px;
+  }
+
+  .report-card {
+    padding: 18px 14px;
+  }
+}
 </style>
