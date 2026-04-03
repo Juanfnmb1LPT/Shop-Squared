@@ -27,7 +27,9 @@ function validateItemInput(name, binId) {
     };
 }
 
-export async function createItem({ name, binId, baseSku }) {
+const ITEM_SELECT = 'id, name, bin_id, base_sku, shared_price, shared_color, shared_style, variation_type';
+
+export async function createItem({ name, binId, baseSku, sharedPrice, sharedColor, sharedStyle, variationType }) {
     const validation = validateItemInput(name, binId);
 
     if (!validation.ok) {
@@ -47,14 +49,16 @@ export async function createItem({ name, binId, baseSku }) {
     };
 
     const trimmedBaseSku = String(baseSku || '').trim();
-    if (trimmedBaseSku) {
-        row.base_sku = trimmedBaseSku;
-    }
+    if (trimmedBaseSku) row.base_sku = trimmedBaseSku;
+    if (sharedPrice != null) row.shared_price = Number(sharedPrice);
+    if (sharedColor) row.shared_color = String(sharedColor).trim();
+    if (sharedStyle) row.shared_style = String(sharedStyle).trim();
+    if (variationType) row.variation_type = variationType;
 
     const { data, error } = await supabase
         .from('items')
         .insert(row)
-        .select('id, name, bin_id, base_sku')
+        .select(ITEM_SELECT)
         .maybeSingle();
 
     if (error) {
@@ -64,7 +68,7 @@ export async function createItem({ name, binId, baseSku }) {
     return { ok: true, data };
 }
 
-export async function updateItem({ id, name, binId, baseSku }) {
+export async function updateItem({ id, name, binId, baseSku, sharedPrice, sharedColor, sharedStyle, variationType, oldBaseSku }) {
     const normalizedId = normalizeId(id);
     const validation = validateItemInput(name, binId);
 
@@ -80,30 +84,74 @@ export async function updateItem({ id, name, binId, baseSku }) {
         return { ok: false, error: 'Supabase is not configured.' };
     }
 
+    const newBaseSku = String(baseSku || '').trim() || null;
+
     const updates = {
         name: validation.normalizedName,
         bin_id: validation.normalizedBinId,
-        base_sku: String(baseSku || '').trim() || null,
+        base_sku: newBaseSku,
+        shared_price: sharedPrice != null ? Number(sharedPrice) : null,
+        shared_color: sharedColor ? String(sharedColor).trim() : null,
+        shared_style: sharedStyle ? String(sharedStyle).trim() : null,
+        variation_type: variationType || null,
     };
 
     const { data, error } = await supabase
         .from('items')
         .update(updates)
         .eq('id', normalizedId)
-        .select('id, name, bin_id, base_sku')
+        .select(ITEM_SELECT)
         .maybeSingle();
 
     if (error) {
         return { ok: false, error: error.message };
     }
 
-    const { error: variationError } = await supabase
+    // Propagate item_name to all variations
+    const { error: nameError } = await supabase
         .from('item_variations')
         .update({ item_name: validation.normalizedName })
         .eq('item_id', normalizedId);
 
-    if (variationError) {
-        return { ok: false, error: variationError.message };
+    if (nameError) {
+        return { ok: false, error: nameError.message };
+    }
+
+    // Propagate shared fields to all variations
+    if (variationType) {
+        const bulkFields = {};
+        if (sharedPrice != null) bulkFields.price = Number(sharedPrice);
+        if (sharedStyle !== undefined) bulkFields.style = sharedStyle ? String(sharedStyle).trim() : null;
+        if (variationType === 'sizes' && sharedColor !== undefined) {
+            bulkFields.color = sharedColor ? String(sharedColor).trim() : '';
+        }
+
+        if (Object.keys(bulkFields).length) {
+            await supabase
+                .from('item_variations')
+                .update(bulkFields)
+                .eq('item_id', normalizedId);
+        }
+    }
+
+    // Propagate base SKU prefix change to variation SKUs
+    if (oldBaseSku && newBaseSku && oldBaseSku !== newBaseSku) {
+        const { data: variations } = await supabase
+            .from('item_variations')
+            .select('id, sku')
+            .eq('item_id', normalizedId);
+
+        const skuUpdates = (variations || [])
+            .filter(v => v.sku && v.sku.startsWith(oldBaseSku))
+            .map(v => ({ id: v.id, sku: newBaseSku + v.sku.slice(oldBaseSku.length) }));
+
+        if (skuUpdates.length) {
+            await Promise.all(
+                skuUpdates.map(u =>
+                    supabase.from('item_variations').update({ sku: u.sku }).eq('id', u.id)
+                )
+            );
+        }
     }
 
     return { ok: true, data };

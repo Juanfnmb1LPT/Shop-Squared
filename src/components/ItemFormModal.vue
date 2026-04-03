@@ -99,6 +99,9 @@ onMounted(async () => {
         formName.value = props.initialItem.name ?? '';
         formBinId.value = props.initialItem.bin_id ?? props.defaultBinId ?? '';
         formBaseSku.value = props.initialItem.base_sku ?? '';
+        formPrice.value = props.initialItem.shared_price != null ? String(props.initialItem.shared_price) : '';
+        formColor.value = props.initialItem.shared_color ?? '';
+        formStyle.value = props.initialItem.shared_style ?? '';
     } else {
         formBinId.value = props.defaultBinId ?? '';
     }
@@ -212,6 +215,14 @@ function onSubmit() {
         payload.style = formStyle.value || null;
     }
 
+    if (props.mode === 'edit' && props.initialItem?.variation_type) {
+        payload.sharedPrice = formPrice.value === '' ? null : Number(formPrice.value);
+        payload.sharedColor = props.initialItem.variation_type === 'sizes' ? formColor.value.trim() || null : null;
+        payload.sharedStyle = formStyle.value || null;
+        payload.variationType = props.initialItem.variation_type;
+        payload.oldBaseSku = props.initialItem.base_sku || '';
+    }
+
     emit('submit', payload);
 }
 </script>
@@ -296,6 +307,57 @@ function onSubmit() {
                         placeholder="e.g. TSHIRT-BLK"
                         :disabled="isSaving"
                     />
+
+                    <!-- Shared variation fields — edit mode only -->
+                    <template v-if="mode === 'edit' && initialItem?.variation_type">
+                        <div class="variation-gen-divider">
+                            <span>Shared Variation Fields</span>
+                            <span class="variation-gen-optional">applies to all</span>
+                        </div>
+
+                        <div class="variation-shared-grid">
+                            <div>
+                                <label class="entity-modal-label" for="item-form-edit-price">Price</label>
+                                <input
+                                    id="item-form-edit-price"
+                                    v-model="formPrice"
+                                    class="entity-modal-input"
+                                    type="number"
+                                    inputmode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    :disabled="isSaving"
+                                />
+                            </div>
+                            <div>
+                                <label class="entity-modal-label" for="item-form-edit-style">Style</label>
+                                <select
+                                    id="item-form-edit-style"
+                                    v-model="formStyle"
+                                    class="entity-modal-input"
+                                    :disabled="isSaving"
+                                >
+                                    <option value="">—</option>
+                                    <option value="Mens">Mens</option>
+                                    <option value="Womens">Womens</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <template v-if="initialItem.variation_type === 'sizes'">
+                            <label class="entity-modal-label" for="item-form-edit-color">Color</label>
+                            <input
+                                id="item-form-edit-color"
+                                v-model="formColor"
+                                class="entity-modal-input"
+                                type="text"
+                                autocomplete="off"
+                                placeholder="e.g. Black"
+                                :disabled="isSaving"
+                            />
+                        </template>
+                    </template>
 
                     <!-- Variation generation — create mode only -->
                     <template v-if="mode === 'create'">
