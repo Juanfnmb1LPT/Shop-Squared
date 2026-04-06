@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import logoUrl from '../assets/lpt_realty.png';
 import { isAuthenticated, logout } from './lib/auth';
@@ -8,6 +8,36 @@ const isNavOpen = ref(false);
 const route = useRoute();
 const router = useRouter();
 const shouldShowShell = computed(() => route.name !== 'login');
+
+const GROUP_ROUTES = {
+  conversion: ['/pre-con', '/post-con', '/shopify-to-square', '/update-quantity'],
+  inventory: ['/search-inventory', '/update-inventory', '/reports'],
+};
+
+function loadNavGroups() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('nav-groups'));
+    if (saved) return { conversion: saved.conversion ?? true, inventory: saved.inventory ?? true };
+  } catch {}
+  return { conversion: true, inventory: true };
+}
+
+const navGroups = ref(loadNavGroups());
+
+function toggleGroup(key) {
+  navGroups.value[key] = !navGroups.value[key];
+  localStorage.setItem('nav-groups', JSON.stringify(navGroups.value));
+}
+
+// Auto-expand group if active route is inside a collapsed group
+watch(() => route.path, (path) => {
+  for (const [key, routes] of Object.entries(GROUP_ROUTES)) {
+    if (routes.some(r => path.startsWith(r)) && !navGroups.value[key]) {
+      navGroups.value[key] = true;
+      localStorage.setItem('nav-groups', JSON.stringify(navGroups.value));
+    }
+  }
+}, { immediate: true });
 
 function toggleNav() {
   isNavOpen.value = !isNavOpen.value;
@@ -69,15 +99,34 @@ function handleLogout() {
 
       <nav class="dashboard-nav" :class="{ 'is-open': isNavOpen }">
         <router-link class="dash-link" to="/" @click="closeNav">Home</router-link>
-        <router-link class="dash-link" to="/pre-con" @click="closeNav">Pre-Con Steps</router-link>
-        <router-link class="dash-link" to="/post-con" @click="closeNav">Post-Con Steps</router-link>
-        <router-link class="dash-link" to="/shopify-to-square" @click="closeNav">Shopify to Square</router-link>
-        <router-link class="dash-link" to="/update-quantity" @click="closeNav">Update Shopify Quantity</router-link>
-        <router-link class="dash-link" to="/search-inventory" @click="closeNav">Search Inventory</router-link>
-        <router-link class="dash-link" to="/reports" @click="closeNav">Reports</router-link>
-        <router-link class="dash-link" to="/update-inventory" @click="closeNav">Update Inventory</router-link>
-        <button class="dash-link" type="button" @click="handleLogout">Logout</button>
+
+        <div class="nav-group">
+          <button class="nav-group-toggle" type="button" @click="toggleGroup('inventory')">
+            <span>Inventory</span>
+            <span class="nav-group-arrow" :class="{ open: navGroups.inventory }">&#x25B8;</span>
+          </button>
+          <div v-if="navGroups.inventory" class="nav-group-links">
+            <router-link class="dash-link" to="/search-inventory" @click="closeNav">Search Inventory</router-link>
+            <router-link class="dash-link" to="/update-inventory" @click="closeNav">Update Inventory</router-link>
+            <router-link class="dash-link" to="/reports" @click="closeNav">Reports</router-link>
+          </div>
+        </div>
+
+        <div class="nav-group">
+          <button class="nav-group-toggle" type="button" @click="toggleGroup('conversion')">
+            <span>Conversion Tools</span>
+            <span class="nav-group-arrow" :class="{ open: navGroups.conversion }">&#x25B8;</span>
+          </button>
+          <div v-if="navGroups.conversion" class="nav-group-links">
+            <router-link class="dash-link" to="/pre-con" @click="closeNav">Pre-Con Steps</router-link>
+            <router-link class="dash-link" to="/post-con" @click="closeNav">Post-Con Steps</router-link>
+            <router-link class="dash-link" to="/shopify-to-square" @click="closeNav">Shopify to Square</router-link>
+            <router-link class="dash-link" to="/update-quantity" @click="closeNav">Update Shopify Quantity</router-link>
+          </div>
+        </div>
+
       </nav>
+      <button class="dash-link logout-link" type="button" @click="handleLogout">Logout</button>
     </aside>
 
     <button

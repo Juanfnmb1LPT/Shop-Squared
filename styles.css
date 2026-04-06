@@ -48,6 +48,10 @@ body {
   background: #c5d9f6;
   border-right: 1px solid rgba(10, 44, 99, 0.12);
   box-shadow: 0 10px 30px rgba(14, 42, 99, 0.08);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .dashboard-header {
@@ -87,6 +91,75 @@ body {
   flex-direction: column;
   gap: 10px;
   flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.4);
+  color: #082145;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.nav-group-toggle:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.nav-group-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: 30px;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+
+.nav-group-arrow.open {
+  transform: rotate(90deg);
+}
+
+.nav-group-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 12px;
+}
+
+.logout-link {
+  flex-shrink: 0;
+  text-align: left;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logout-link:hover {
+  background: transparent;
+  color: #991b1b;
+  transform: none;
 }
 
 .mobile-topbar {
@@ -872,6 +945,7 @@ body {
     min-width: 252px;
     padding: 14px 16px;
     gap: 16px;
+    height: auto;
     border-right: 1px solid rgba(10, 44, 99, 0.12);
     border-bottom: 0;
     transform: translateX(-100%);
