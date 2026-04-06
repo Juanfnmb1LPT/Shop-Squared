@@ -98,11 +98,29 @@ function handleLogout() {
       </div>
 
       <nav class="dashboard-nav" :class="{ 'is-open': isNavOpen }">
-        <router-link class="dash-link" to="/" @click="closeNav">Home</router-link>
+        <router-link class="nav-group-toggle" to="/" @click="closeNav">
+          <span class="nav-group-label">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 10.5 12 3l9 7.5" />
+              <path d="M6 9.5V21h12V9.5" />
+            </svg>
+            <span>Home</span>
+          </span>
+          <span class="nav-group-arrow nav-group-arrow-placeholder" aria-hidden="true"></span>
+        </router-link>
 
         <div class="nav-group">
           <button class="nav-group-toggle" type="button" @click="toggleGroup('inventory')">
-            <span>Inventory</span>
+            <span class="nav-group-label">
+              <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 4h6" />
+                <path d="M9 4a2 2 0 0 0-2 2v1h10V6a2 2 0 0 0-2-2" />
+                <path d="M6 7h12v13H6z" />
+                <path d="M9 12h6" />
+                <path d="M9 16h6" />
+              </svg>
+              <span>Inventory</span>
+            </span>
             <span class="nav-group-arrow" :class="{ open: navGroups.inventory }">&#x25B8;</span>
           </button>
           <div v-if="navGroups.inventory" class="nav-group-links">
@@ -114,7 +132,15 @@ function handleLogout() {
 
         <div class="nav-group">
           <button class="nav-group-toggle" type="button" @click="toggleGroup('conversion')">
-            <span>Conversion Tools</span>
+            <span class="nav-group-label">
+              <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7h11" />
+                <path d="m15 4 3 3-3 3" />
+                <path d="M17 17H6" />
+                <path d="m9 14-3 3 3 3" />
+              </svg>
+              <span>Conversion Tools</span>
+            </span>
             <span class="nav-group-arrow" :class="{ open: navGroups.conversion }">&#x25B8;</span>
           </button>
           <div v-if="navGroups.conversion" class="nav-group-links">
@@ -126,7 +152,19 @@ function handleLogout() {
         </div>
 
       </nav>
-      <button class="dash-link logout-link" type="button" @click="handleLogout">Logout</button>
+      <button class="nav-group-toggle logout-link" type="button" @click="handleLogout">
+        <span class="nav-group-label">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 5H5v14h5" />
+            <path d="M14 12H6" />
+            <path d="m11 9 3 3-3 3" />
+            <path d="M20 3h-6" />
+            <path d="M20 21h-6" />
+          </svg>
+          <span>Logout</span>
+        </span>
+        <span class="nav-group-arrow nav-group-arrow-placeholder" aria-hidden="true"></span>
+      </button>
     </aside>
 
     <button

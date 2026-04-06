@@ -105,16 +105,45 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  min-height: 54px;
   padding: 12px 14px;
   border: 0;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.4);
+  font-family: inherit;
   color: #082145;
   font-size: 14px;
   font-weight: 800;
+  line-height: 1.1;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.nav-group-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+}
+
+.nav-group-label > span:last-child {
+  min-width: 0;
+}
+
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .nav-group-toggle:hover {
@@ -125,6 +154,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 30px;
   width: 30px;
   height: 30px;
   font-size: 30px;
@@ -134,6 +164,10 @@ body {
 
 .nav-group-arrow.open {
   transform: rotate(90deg);
+}
+
+.nav-group-arrow-placeholder {
+  visibility: hidden;
 }
 
 .nav-group-links {
@@ -146,18 +180,13 @@ body {
 .logout-link {
   flex-shrink: 0;
   text-align: left;
-  padding: 8px 14px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: #6b7280;
-  font-size: 13px;
-  font-weight: 600;
+  justify-content: flex-start;
+  color: #082145;
   cursor: pointer;
 }
 
 .logout-link:hover {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.4);
   color: #991b1b;
   transform: none;
 }
@@ -186,10 +215,6 @@ body {
   font-size: 16px;
   font-weight: 800;
   color: #082145;
-}
-
-.nav-overlay {
-  display: none;
 }
 
 .nav-toggle {
