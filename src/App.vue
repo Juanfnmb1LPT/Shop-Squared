@@ -98,7 +98,7 @@ function handleLogout() {
       </div>
 
       <nav class="dashboard-nav" :class="{ 'is-open': isNavOpen }">
-        <router-link class="nav-group-toggle" to="/" @click="closeNav">
+        <router-link class="nav-group-toggle hover-link" to="/" @click="closeNav">
           <span class="nav-group-label">
             <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M3 10.5 12 3l9 7.5" />
@@ -110,7 +110,7 @@ function handleLogout() {
         </router-link>
 
         <div class="nav-group">
-          <button class="nav-group-toggle" type="button" @click="toggleGroup('inventory')">
+          <button class="nav-group-toggle hover-link" type="button" @click="toggleGroup('inventory')">
             <span class="nav-group-label">
               <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M9 4h6" />
@@ -131,7 +131,7 @@ function handleLogout() {
         </div>
 
         <div class="nav-group">
-          <button class="nav-group-toggle" type="button" @click="toggleGroup('conversion')">
+          <button class="nav-group-toggle hover-link" type="button" @click="toggleGroup('conversion')">
             <span class="nav-group-label">
               <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M7 7h11" />
