@@ -1,10 +1,15 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { buildShopifyToSquareRows, convertShopifyToSquareCsv } from '../lib/convertShopToSquare';
 import { downloadCsv } from '../lib/downloadCsv';
 
 const csvFile = ref(null);
 const fileName = ref('No file chosen');
+
+const showFileWarning = computed(() => {
+  if (!csvFile.value) return false;
+  return !csvFile.value.name.toLowerCase().includes('products');
+});
 const isProcessing = ref(false);
 const isPreviewLoading = ref(false);
 const previewHeaders = ref([]);
@@ -75,9 +80,9 @@ function closePreview() {
     <div class="note instruction-panel reveal-fade-up reveal-delay-1">
       <strong>Pre-Con Steps</strong>
       <ol>
-        <li>Export Shopify inventory CSV.</li>
-        <li>Upload it to the tool here.</li>
-        <li>Download the Square-ready CSV from the tool here.</li>
+        <li>Export Shopify Products CSV.</li>
+        <li>Upload it to the tool below.</li>
+        <li>Download the Square-ready CSV from the tool.</li>
         <li>Import the downloaded CSV into Square.</li>
       </ol>
     </div>
@@ -96,6 +101,10 @@ function closePreview() {
           {{ isPreviewLoading ? 'Loading preview…' : 'Preview First 5 Rows' }}
         </button>
       </div>
+    </div>
+
+    <div v-if="showFileWarning" class="file-warning">
+      Make sure you upload the <strong>Products</strong> CSV, not the Inventory CSV.
     </div>
 
     <div class="note function-panel reveal-fade-up reveal-delay-2">
@@ -191,6 +200,20 @@ function closePreview() {
   max-width: none;
   width: 100%;
   min-height: 44px;
+}
+
+.file-warning {
+  width: 100%;
+  max-width: 840px;
+  margin: 10px auto 0;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--warning-bg, #fff3cd);
+  color: var(--warning-text, #856404);
+  border: 1px solid var(--warning-border, #ffc107);
+  font-size: 0.92rem;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 @media (max-width: 640px) {
