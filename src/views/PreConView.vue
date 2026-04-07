@@ -46,18 +46,9 @@ const stages = [
     title: 'Pre-Con Steps',
     description: 'Follow these steps to successfully import a Shopify products CSV into Square.'
   },
-  {
-    title: 'Step 1',
-    description: 'Export Shopify products CSV.'
-  },
-  {
-    title: 'Step 2',
-    description: 'Upload it to the tool, preview the first five converted rows, and download the Square-ready CSV.'
-  },
-  {
-    title: 'Step 3',
-    description: 'Import the downloaded CSV into Square and review any import warnings or errors before finishing.'
-  }
+  { title: 'Step 1' },
+  { title: 'Step 2' },
+  { title: 'Step 3' }
 ];
 
 const totalSteps = stages.length - 1;

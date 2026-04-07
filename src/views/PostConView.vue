@@ -65,22 +65,10 @@ const stages = [
     title: 'Post-Con Steps',
     description: 'Follow these steps to update the Shopify inventory using the latest quantity values from Square.'
   },
-  {
-    title: 'Step 1',
-    description: 'Export the latest inventory CSV from Square so you have the new quantity values.'
-  },
-  {
-    title: 'Step 2',
-    description: 'Export the current inventory CSV from Shopify so the quantities can be updated correctly.'
-  },
-  {
-    title: 'Step 3',
-    description: 'Upload both CSV files, preview the first five updated rows, and create the new Shopify import file.'
-  },
-  {
-    title: 'Step 4',
-    description: 'Import the updated Shopify CSV back into Shopify and review the import results before finishing.'
-  }
+  { title: 'Step 1' },
+  { title: 'Step 2' },
+  { title: 'Step 3' },
+  { title: 'Step 4' }
 ];
 
 const totalSteps = stages.length - 1;
@@ -246,7 +234,7 @@ function closePreview() {
       <div v-else-if="currentStage === 2" class="postcon-panel guided-step-panel">
         <div class="postcon-step-number">02</div>
         <p class="postcon-copy guided-step-copy reveal-fade-up reveal-delay-1">
-          Export the Shopify inventory CSV so the Square quantities can be matched back to the correct Shopify SKUs.
+          Export the Shopify inventory CSV so the Square quantities can be matched back to the correct Shopify SKUs (make sure to export by your desired archived state if needed).
         </p>
         <div class="postcon-visual-card guided-visual-card" aria-label="Step 2 visual guide">
           <InfiniteCarousel
