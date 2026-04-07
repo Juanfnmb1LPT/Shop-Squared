@@ -44,11 +44,11 @@ const stepVisuals = {
 const stages = [
   {
     title: 'Pre-Con Steps',
-    description: 'Follow these steps to successfully import a Shopify inventory into Square.'
+    description: 'Follow these steps to successfully import a Shopify products CSV into Square.'
   },
   {
     title: 'Step 1',
-    description: 'Export Shopify inventory CSV.'
+    description: 'Export Shopify products CSV.'
   },
   {
     title: 'Step 2',
@@ -79,6 +79,11 @@ function resetPreview() {
   previewHeaders.value = [];
   previewRows.value = [];
 }
+
+const showFileWarning = computed(() => {
+  if (!csvFile.value) return false;
+  return !csvFile.value.name.toLowerCase().includes('products');
+});
 
 function onFileChange(event) {
   const file = event.target.files?.[0] || null;
@@ -201,7 +206,7 @@ function closePreview() {
       <div v-else-if="currentStage === 1" class="precon-panel guided-step-panel precon-panel-step1">
         <div class="precon-step-number">01</div>
         <p class="precon-copy guided-step-copy reveal-fade-up reveal-delay-1">
-          Export Shopify inventory CSV.
+          Export Shopify <strong>Products</strong> CSV.
         </p>
         <div class="precon-visual-card guided-visual-card" aria-label="Step 1 visual guide">
           <InfiniteCarousel
@@ -245,6 +250,10 @@ function closePreview() {
             </div>
           </div>
 
+          <div v-if="showFileWarning" class="file-warning">
+            Make sure you upload the <strong>Products</strong> CSV, not the Inventory CSV.
+          </div>
+
         </div>
       </div>
 
@@ -265,7 +274,7 @@ function closePreview() {
     </div>
 
     <p v-if="currentStage === 2" class="precon-disclaimer guided-step-disclaimer reveal-fade-up reveal-delay-2">
-      Make sure you download the Square CSV before clicking Next Step.
+      Make sure you download the Square Ready CSV before clicking Next Step.
     </p>
 
     <div v-if="currentStage > 0" class="precon-actions guided-step-actions">
@@ -316,6 +325,20 @@ function closePreview() {
 </template>
 
 <style scoped>
+.file-warning {
+  width: 100%;
+  max-width: 840px;
+  margin: 10px auto 0;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--warning-bg, #fff3cd);
+  color: var(--warning-text, #856404);
+  border: 1px solid var(--warning-border, #ffc107);
+  font-size: 0.92rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
 .precon-subtitle {
   max-width: 620px;
 }

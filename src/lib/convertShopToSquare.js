@@ -92,6 +92,7 @@ export async function buildShopifyToSquareRows(file) {
         'Item Type', 'Weight (lb)', 'Social Media Link Title', 'Social Media Link Description',
         'Price', 'Online Sale Price', 'Archived', 'Sellable', 'Contains Alcohol', 'Stockable',
         'Skip Detail Screen in POS', 'Option Name 1', 'Option Value 1',
+        'Option Name 2', 'Option Value 2',
         'Current Quantity LPT Realty, LLC', 'New Quantity LPT Realty, LLC',
         'Stock Alert Enabled LPT Realty, LLC', 'Stock Alert Count LPT Realty, LLC',
     ];
@@ -135,12 +136,17 @@ export async function buildShopifyToSquareRows(file) {
                 || (productRow ? findOptionValueByName(productRow, 'size') : '')
                 || row['Option1 Value']
                 || 'Size';
-            const genderValue = detectMensOrWomens(row, productRow);
             const hasStyle = hasOptionName(row, 'style') || (productRow ? hasOptionName(productRow, 'style') : false);
+            const styleValue = findOptionValueByName(row, 'style')
+                || (productRow ? findOptionValueByName(productRow, 'style') : '')
+                || detectMensOrWomens(row, productRow);
 
             const variationName = sizeValue || 'Size';
             const optionName = hasStyle ? 'Style' : '';
-            const optionValue = hasStyle ? genderValue : '';
+            const optionValue = hasStyle ? styleValue : '';
+
+            const optionName2 = sizeValue ? 'Size' : '';
+            const optionValue2 = sizeValue || '';
 
             output.push([
                 handle, '', finalTitle, finalTitle, variationName,
@@ -148,6 +154,7 @@ export async function buildShopifyToSquareRows(file) {
                 'Physical good', ' ', '', '',
                 price, '', groupArchived, '', 'N', ' ',
                 'N', optionName, optionValue,
+                optionName2, optionValue2,
                 '0', inventoryQty, 'TRUE', '',
             ]);
         });
