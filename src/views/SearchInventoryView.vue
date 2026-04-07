@@ -20,6 +20,7 @@ watch(searchTerm, (value) => {
 });
 
 const bins = ref([]);
+const totalItems = ref(null);
 const totalVariations = ref(null);
 const isLoading = ref(true);
 const errorMessage = ref("");
@@ -509,14 +510,25 @@ async function loadBins() {
       items: itemsByBinId[bin.id] || [],
     }));
 
-    // Fetch total item_variations count for display
+    // Fetch total variations count and unique items count
     try {
-      const { data: _d, error: countError, count } = await supabase
+      const { error: countError, count } = await supabase
         .from('item_variations')
         .select('id', { count: 'exact', head: true });
       totalVariations.value = countError ? null : (count ?? 0);
+
+      const { data: itemData, error: itemError } = await supabase
+        .from('item_variations')
+        .select('item_id');
+      if (itemError) {
+        totalItems.value = null;
+      } else {
+        const uniqueItems = new Set(itemData.map((r) => r.item_id));
+        totalItems.value = uniqueItems.size;
+      }
     } catch (e) {
       totalVariations.value = null;
+      totalItems.value = null;
     }
     bins.value = (binData || []).map((bin) => {
       const groupedItems = itemsByBinId[bin.id] || [];
@@ -561,8 +573,9 @@ onUnmounted(stopScan);
         </button>
       </div>
     </div>
-<div class="inventory-total">Total Item Types: {{ totalVariations === null ? '—' : totalVariations }}</div>
-    <div class="inventory-total">Total Quantity Across All Bins: {{ grandTotalQuantity }}</div>
+<div class="inventory-total">Total Items: {{ totalItems === null ? '—' : totalItems }}</div>
+    <div class="inventory-total">Total Variations: {{ totalVariations === null ? '—' : totalVariations }}</div>
+    <div class="inventory-total">Total Quantity: {{ grandTotalQuantity }}</div>
     <div class="inventory-search-panel reveal-fade-up reveal-delay-1">
       <label class="inventory-search-label" for="inventory-search-input"
         >Search bins</label

@@ -58,7 +58,7 @@ const showLowStockModal = ref(false);
           <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
         <div class="report-card-title">Shopify Export</div>
-        <div class="report-card-desc">Export all variations as a Shopify-compatible CSV file.</div>
+        <div class="report-card-desc">Export as a Products CSV (new/update) or Inventory CSV (qty sync).</div>
         <ShopifyExportVariations compact class="report-card-action" />
       </div>
     </div>
