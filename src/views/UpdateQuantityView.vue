@@ -86,7 +86,7 @@ function closePreview() {
       <strong>Post-Con Steps</strong>
       <ol>
         <li>Export the latest inventory file from Square so you have the new quantity values.</li>
-        <li>Export the current inventory file from Shopify so quantities can be updated by SKU.</li>
+        <li>Export the current inventory file from Shopify so quantities can be updated by SKU (make sure to export by your desired archived state if needed).</li>
         <li>Upload both files and click <strong>Download Updated Shopify CSV</strong>.</li>
         <li>Import the updated Shopify CSV back into Shopify and review import results.</li>
       </ol>

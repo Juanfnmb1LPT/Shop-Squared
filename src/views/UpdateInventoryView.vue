@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { updateDatabaseFromShopifyFile } from '../lib/updateInventoryFromShopify';
 import { updateDatabaseFromSquareFile } from '../lib/updateInventoryFromSquare';
 
@@ -15,6 +15,11 @@ const errorSquare = ref('');
 const isProcessing = ref(false);
 const resultMessage = ref('');
 const error = ref('');
+
+const showShopifyWarning = computed(() => {
+  if (!shopifyFile.value) return false;
+  return !shopifyFile.value.name.toLowerCase().includes('products');
+});
 
 function onShopifyChange(e) {
   const file = e.target.files?.[0] || null;
@@ -110,8 +115,8 @@ async function onUpdateSquare() {
 
         <div class="note">
           <ol>
-            <li>Download the CSV export from Shopify containing current quantities.</li>
-            <li>Upload the Shopify CSV file below.</li>
+            <li>Download the Products CSV export from Shopify containing current quantities.</li>
+            <li>Upload the Shopify Products CSV file below.</li>
             <li>Click <strong>Update Inventory (From Shopify)</strong> to apply changes to the database.</li>
           </ol>
         </div>
@@ -121,6 +126,10 @@ async function onUpdateSquare() {
           <span class="file-name">{{ shopifyName }}</span>
           <input ref="shopifyInput" type="file" accept=".csv,.xlsx,.xls" @change="onShopifyChange" />
         </label>
+
+        <div v-if="showShopifyWarning" class="file-warning">
+          Make sure you upload the <strong>Products</strong> CSV, not the Inventory CSV.
+        </div>
 
         <div class="action-row">
               <button class="btn" type="button" @click="onUpdateShopify" :disabled="isProcessing">{{ isProcessing ? 'Updating…' : 'Update Inventory (From Shopify)' }}</button>
@@ -251,6 +260,18 @@ async function onUpdateSquare() {
 
 .update-column .note ol li {
   margin: 4px 0;
+}
+
+.file-warning {
+  margin: 10px auto 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--warning-bg, #fff3cd);
+  color: var(--warning-text, #856404);
+  border: 1px solid var(--warning-border, #ffc107);
+  font-size: 0.85rem;
+  text-align: center;
+  max-width: 320px;
 }
 
 @media (max-width: 900px) {
