@@ -288,12 +288,16 @@ const filteredBins = computed(() => {
     return bins.value;
   }
 
+  const normalize = (str) => str.toLowerCase().replace(/[-_]/g, " ");
+  const query = normalize(normalizedQuery);
+
   return bins.value.filter((bin) => {
-    const haystack = [bin.id, bin.name, ...bin.items.map((item) => item.name)]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(normalizedQuery);
+    const haystack = normalize(
+      [bin.id, bin.name, ...bin.items.map((item) => item.name)]
+        .filter(Boolean)
+        .join(" "),
+    );
+    return haystack.includes(query);
   });
 });
 
