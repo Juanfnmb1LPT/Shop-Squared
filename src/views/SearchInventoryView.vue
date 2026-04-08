@@ -281,23 +281,60 @@ async function printBinQr(bin) {
   }
 }
 
-const filteredBins = computed(() => {
-  const normalizedQuery = searchTerm.value.trim().toLowerCase();
+const abbreviations = {
+  // Colors
+  "blk":   "black",
+  "blck":  "black",
+  "blu":   "blue",
+  "gry":   "grey",
+  "grn":   "green",
+  "wht":   "white",
+  "gld":   "gold",
+  // Products
+  "wtr":   "water",
+  "bott":  "bottle",
+  "btl":   "bottle",
+  "mtn":   "mountain",
+  "tmblr": "tumbler",
+  "qzip":  "quarter zip",
+  "hood":  "hoodie",
+  "asstd": "assorted",
+  "prep":  "prepper",
+  // Places / brands
+  "wlst":  "wallstreet",
+  "wst":   "wallstreet",
+};
 
-  if (!normalizedQuery) {
+const sanitize = (str) =>
+  str.toLowerCase().replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
+
+const expand = (word) => {
+  const mapped = abbreviations[word];
+  return mapped ? [word, mapped] : [word];
+};
+
+const filteredBins = computed(() => {
+  const query = sanitize(searchTerm.value);
+
+  if (!query) {
     return bins.value;
   }
 
-  const normalize = (str) => str.toLowerCase().replace(/[-_]/g, " ");
-  const query = normalize(normalizedQuery);
+  const queryWords = query.split(" ");
 
   return bins.value.filter((bin) => {
-    const haystack = normalize(
+    const haystack = sanitize(
       [bin.id, bin.name, ...bin.items.map((item) => item.name)]
         .filter(Boolean)
         .join(" "),
     );
-    return haystack.includes(query);
+    const haystackWords = haystack.split(" ");
+    return queryWords.every((qw) => {
+      const variants = expand(qw);
+      return haystackWords.some((hw) =>
+        variants.some((v) => hw.startsWith(v)),
+      );
+    });
   });
 });
 
