@@ -55,7 +55,7 @@ async function search() {
         .lte('quantity', num)
         .order('quantity', { ascending: true }),
       supabase.from('items').select('id, bin_id'),
-      supabase.from('bins').select('id, name'),
+      supabase.from('bins').select('id, name, number'),
     ]);
 
     if (varErr) throw varErr;
