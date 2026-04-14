@@ -15,8 +15,8 @@ const emit = defineEmits(['close']);
 
 const isLoading = ref(true);
 const error = ref('');
-const items = ref([]);
-const expandedIds = ref(new Set());
+const binGroups = ref([]);
+const expandedBins = ref(new Set());
 const isExporting = ref(false);
 const dialogRef = ref(null);
 let previousFocus = null;
@@ -40,21 +40,69 @@ function sizeIndex(size) {
   return sizeOrder[s] ?? 999;
 }
 
-const selectedCount = computed(() => items.value.filter(i => i.selected).length);
-const allSelected = computed(() => items.value.length > 0 && selectedCount.value === items.value.length);
-const noneSelected = computed(() => selectedCount.value === 0);
+function sortBins(list) {
+  return [...list].sort((a, b) => {
+    const aHasNum = a.binNumber != null;
+    const bHasNum = b.binNumber != null;
+    if (aHasNum && bHasNum) return a.binNumber - b.binNumber;
+    if (aHasNum && !bHasNum) return -1;
+    if (!aHasNum && bHasNum) return 1;
+    return (a.binName || '').localeCompare(b.binName || '');
+  });
+}
+
+const selectedItemCount = computed(() => {
+  let count = 0;
+  for (const bin of binGroups.value) {
+    for (const item of bin.items) {
+      if (item.selected) count++;
+    }
+  }
+  return count;
+});
+
+const totalItemCount = computed(() => {
+  let count = 0;
+  for (const bin of binGroups.value) {
+    count += bin.items.length;
+  }
+  return count;
+});
+
+const allSelected = computed(() => totalItemCount.value > 0 && selectedItemCount.value === totalItemCount.value);
+const noneSelected = computed(() => selectedItemCount.value === 0);
 
 function toggleAll() {
   const newVal = !allSelected.value;
-  items.value.forEach(i => (i.selected = newVal));
+  for (const bin of binGroups.value) {
+    bin.selected = newVal;
+    for (const item of bin.items) {
+      item.selected = newVal;
+    }
+  }
 }
 
-function toggleExpand(itemId) {
-  if (expandedIds.value.has(itemId)) {
-    expandedIds.value.delete(itemId);
-  } else {
-    expandedIds.value.add(itemId);
+function toggleBin(bin) {
+  bin.selected = !bin.selected;
+  for (const item of bin.items) {
+    item.selected = bin.selected;
   }
+}
+
+function toggleItem(bin, item) {
+  item.selected = !item.selected;
+  // Update bin selected state based on items
+  bin.selected = bin.items.some(i => i.selected);
+}
+
+function toggleExpanded(binId) {
+  const next = new Set(expandedBins.value);
+  if (next.has(binId)) {
+    next.delete(binId);
+  } else {
+    next.add(binId);
+  }
+  expandedBins.value = next;
 }
 
 async function fetchData() {
@@ -65,33 +113,27 @@ async function fetchData() {
       throw new Error('Supabase not configured.');
     }
 
-    const { data, error: fetchError } = await supabase
-      .from('item_variations')
-      .select('*')
-      .order('item_id', { ascending: true })
-      .order('item_name', { ascending: true });
+    const [{ data: binData, error: binErr }, { data: itemData, error: itemErr }, { data: varData, error: varErr }] = await Promise.all([
+      supabase.from('bins').select('id, name, number'),
+      supabase.from('items').select('id, name, bin_id').order('name', { ascending: true }),
+      supabase.from('item_variations').select('*').order('item_id', { ascending: true }),
+    ]);
 
-    if (fetchError) throw fetchError;
-    if (!data || !data.length) throw new Error('No items found.');
+    if (binErr) throw binErr;
+    if (itemErr) throw itemErr;
+    if (varErr) throw varErr;
+    if (!binData || !binData.length) throw new Error('No bins found.');
 
-    // Group by item_id
-    const groups = {};
-    for (const v of data) {
-      const id = v.item_id ?? 'no-id';
-      if (!groups[id]) {
-        groups[id] = {
-          itemId: id,
-          itemName: (v.item_name || '').trim(),
-          selected: true,
-          variations: [],
-        };
-      }
-      groups[id].variations.push(v);
-    }
+    // Group variations by item_id
+    const varsByItem = (varData || []).reduce((map, v) => {
+      if (!map[v.item_id]) map[v.item_id] = [];
+      map[v.item_id].push(v);
+      return map;
+    }, {});
 
     // Sort variations within each group
-    for (const g of Object.values(groups)) {
-      g.variations.sort((a, b) => {
+    for (const vars of Object.values(varsByItem)) {
+      vars.sort((a, b) => {
         const sa = sizeIndex(a.size);
         const sb = sizeIndex(b.size);
         if (sa !== sb) return sa - sb;
@@ -99,9 +141,35 @@ async function fetchData() {
       });
     }
 
-    items.value = Object.values(groups).sort((a, b) =>
-      a.itemName.localeCompare(b.itemName)
-    );
+    // Build bin number lookup
+    const binNumberMap = {};
+    for (const b of binData) {
+      binNumberMap[b.id] = b.number;
+    }
+
+    // Group items by bin_id
+    const itemsByBin = (itemData || []).reduce((map, item) => {
+      if (!map[item.bin_id]) map[item.bin_id] = [];
+      map[item.bin_id].push({
+        itemId: item.id,
+        itemName: (item.name || '').trim(),
+        binNumber: binNumberMap[item.bin_id] ?? null,
+        selected: true,
+        variations: varsByItem[item.id] || [],
+      });
+      return map;
+    }, {});
+
+    binGroups.value = sortBins(binData.map(b => ({
+      binId: b.id,
+      binName: (b.name || '').trim(),
+      binNumber: b.number,
+      selected: true,
+      items: itemsByBin[b.id] || [],
+    })));
+
+    // Auto-expand all bins
+    expandedBins.value = new Set(binGroups.value.map(b => b.binId));
   } catch (err) {
     error.value = err?.message || String(err);
   } finally {
@@ -112,7 +180,6 @@ async function fetchData() {
 function buildItemCell(d, item) {
   const { Paragraph, TextRun, TableCell, WidthType, AlignmentType, BorderStyle } = d;
 
-  // Collect unique styles and colors
   const styles = [...new Set(item.variations.map(v => (v.style || '').trim()).filter(Boolean))];
   const colors = [...new Set(item.variations.map(v => (v.color || '').trim()).filter(Boolean))];
   const sizes = item.variations.map(v => (v.size || '').trim()).filter(Boolean);
@@ -120,7 +187,6 @@ function buildItemCell(d, item) {
 
   const paragraphs = [];
 
-  // Style line (MENS | WOMENS)
   if (styles.length) {
     paragraphs.push(new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -129,14 +195,12 @@ function buildItemCell(d, item) {
     }));
   }
 
-  // Item name
   paragraphs.push(new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { after: 40 },
     children: [new TextRun({ text: (item.itemName || 'Unnamed').toUpperCase(), bold: true, size: 22, font: 'Arial' })],
   }));
 
-  // Color(s)
   if (colors.length) {
     paragraphs.push(new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -145,7 +209,6 @@ function buildItemCell(d, item) {
     }));
   }
 
-  // Price
   if (price != null) {
     paragraphs.push(new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -154,7 +217,6 @@ function buildItemCell(d, item) {
     }));
   }
 
-  // Sizes
   if (sizes.length) {
     paragraphs.push(new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -163,10 +225,18 @@ function buildItemCell(d, item) {
     }));
   }
 
+  if (item.binNumber != null) {
+    paragraphs.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 40, after: 20 },
+      children: [new TextRun({ text: `Bin #${item.binNumber}`, size: 16, font: 'Arial', color: '777777' })],
+    }));
+  }
+
   return new TableCell({
     width: { size: 25, type: WidthType.PERCENTAGE },
     margins: { top: 120, bottom: 120, left: 100, right: 100 },
-    verticalAlign: 'center',
+    verticalAlign: 'bottom',
     borders: {
       top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
       bottom: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' },
@@ -198,12 +268,17 @@ async function doExport() {
     const { docx: d, fileSaver } = await loadDocxDeps();
     const { Document, Packer, Paragraph, TextRun, Table, TableRow, WidthType, AlignmentType, HeightRule, TableLayoutType } = d;
 
-    const selected = items.value.filter(i => i.selected);
+    const selected = [];
+    for (const bin of binGroups.value) {
+      for (const item of bin.items) {
+        if (item.selected) selected.push(item);
+      }
+    }
+
     const COLS = 4;
     const ROWS_PER_PAGE = 3;
     const ITEMS_PER_PAGE = COLS * ROWS_PER_PAGE; // 12
 
-    // Split items into pages of 12
     const pages = [];
     for (let i = 0; i < selected.length; i += ITEMS_PER_PAGE) {
       pages.push(selected.slice(i, i + ITEMS_PER_PAGE));
@@ -216,7 +291,6 @@ async function doExport() {
     };
 
     // US Letter = 15840 twips tall, margins 400+400 = 800, usable = 15040
-    // First page has title (~600 twips), so rows are shorter on page 1
     const PAGE_HEIGHT = 15840;
     const MARGIN_V = 800;
     const TITLE_HEIGHT = 600;
@@ -242,7 +316,6 @@ async function doExport() {
         }));
       }
 
-      // Pad with empty rows so every page has exactly 3 rows
       while (tableRows.length < ROWS_PER_PAGE) {
         const emptyCells = [];
         for (let j = 0; j < COLS; j++) emptyCells.push(buildEmptyCell(d));
@@ -307,10 +380,10 @@ onUnmounted(() => {
         </div>
 
         <!-- Loading -->
-        <div v-if="isLoading" class="export-loading">Loading items...</div>
+        <div v-if="isLoading" class="export-loading">Loading inventory...</div>
 
         <!-- Error -->
-        <div v-else-if="error && items.length === 0" class="export-error">{{ error }}</div>
+        <div v-else-if="error && binGroups.length === 0" class="export-error">{{ error }}</div>
 
         <!-- Content -->
         <template v-else>
@@ -320,50 +393,43 @@ onUnmounted(() => {
               <input type="checkbox" :checked="allSelected" :indeterminate="!allSelected && !noneSelected" @change="toggleAll" />
               Select All
             </label>
-            <span class="export-count">{{ selectedCount }} of {{ items.length }} items selected</span>
+            <span class="export-count">{{ selectedItemCount }} of {{ totalItemCount }} items selected</span>
           </div>
 
-          <!-- Item list -->
+          <!-- Bin list with item dropdowns -->
           <div class="export-list">
-            <div v-for="item in items" :key="item.itemId" class="export-item" :class="{ deselected: !item.selected }">
-              <div class="export-item-row" @click="item.selected = !item.selected">
-                <input type="checkbox" :checked="item.selected" @click.stop @change="item.selected = !item.selected" />
-                <span class="export-item-name">{{ item.itemName || 'Unnamed Item' }}</span>
-                <span class="export-item-badge">{{ item.variations.length }} variation{{ item.variations.length !== 1 ? 's' : '' }}</span>
-                <button
-                  class="export-expand-btn"
-                  type="button"
-                  :aria-label="expandedIds.has(item.itemId) ? 'Collapse' : 'Expand'"
-                  @click.stop="toggleExpand(item.itemId)"
+            <div
+              v-for="bin in binGroups"
+              :key="bin.binId"
+              class="export-bin-group"
+              :class="{ deselected: !bin.selected }"
+            >
+              <div class="export-bin-header" @click="toggleExpanded(bin.binId)">
+                <input type="checkbox" :checked="bin.selected" @click.stop @change="toggleBin(bin)" />
+                <svg
+                  class="export-chevron"
+                  :class="{ expanded: expandedBins.has(bin.binId) }"
+                  width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"
                 >
-                  {{ expandedIds.has(item.itemId) ? '&#x25B2;' : '&#x25BC;' }}
-                </button>
+                  <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="export-bin-name">{{ bin.binName || bin.binId }}<span v-if="bin.binNumber != null" class="export-bin-number"> #{{ bin.binNumber }}</span></span>
+                <span class="export-bin-count">{{ bin.items.length }} item{{ bin.items.length !== 1 ? 's' : '' }}</span>
               </div>
 
-              <!-- Expanded variation detail -->
-              <div v-if="expandedIds.has(item.itemId)" class="export-variations">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Size</th>
-                      <th>Color</th>
-                      <th>Style</th>
-                      <th>SKU</th>
-                      <th>Qty</th>
-                      <th>Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="v in item.variations" :key="v.id">
-                      <td>{{ v.size || '—' }}</td>
-                      <td>{{ v.color || '—' }}</td>
-                      <td>{{ v.style || '—' }}</td>
-                      <td>{{ v.sku || '—' }}</td>
-                      <td>{{ v.quantity ?? '—' }}</td>
-                      <td>{{ v.price != null ? `$${Number(v.price).toFixed(2)}` : '—' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div v-if="expandedBins.has(bin.binId)" class="export-bin-items">
+                <div v-if="!bin.items.length" class="export-item-row export-empty-bin">Empty bin</div>
+                <div
+                  v-for="item in bin.items"
+                  :key="item.itemId"
+                  class="export-item-row"
+                  :class="{ deselected: !item.selected }"
+                  @click="toggleItem(bin, item)"
+                >
+                  <input type="checkbox" :checked="item.selected" @click.stop @change="toggleItem(bin, item)" />
+                  <span class="export-item-name">{{ item.itemName || 'Unnamed Item' }}</span>
+                  <span class="export-item-badge">{{ item.variations.length }} var{{ item.variations.length !== 1 ? 's' : '' }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -381,7 +447,7 @@ onUnmounted(() => {
             :disabled="noneSelected || isLoading || isExporting"
             @click="doExport"
           >
-            {{ isExporting ? 'Exporting...' : `Export ${selectedCount} Item${selectedCount !== 1 ? 's' : ''}` }}
+            {{ isExporting ? 'Exporting...' : `Export ${selectedItemCount} Item${selectedItemCount !== 1 ? 's' : ''}` }}
           </button>
         </div>
       </div>
@@ -404,7 +470,7 @@ onUnmounted(() => {
 
 .export-dialog {
   width: 100%;
-  max-width: 720px;
+  max-width: 600px;
   padding: 28px;
   border-radius: 20px;
   background: #ffffff;
@@ -478,10 +544,10 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.export-item {
+.export-bin-group {
   border: 1px solid rgba(18, 58, 138, 0.08);
   border-radius: 10px;
   overflow: hidden;
@@ -489,33 +555,93 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.export-item.deselected {
+.export-bin-group.deselected {
   opacity: 0.5;
 }
 
-.export-item-row {
+.export-bin-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 10px 14px;
   cursor: pointer;
   user-select: none;
 }
 
-.export-item-row:hover {
+.export-bin-header:hover {
   background: rgba(244, 248, 255, 0.7);
 }
 
-.export-item-row input {
+.export-bin-header input {
   width: 16px;
   height: 16px;
   cursor: pointer;
   flex-shrink: 0;
 }
 
-.export-item-name {
+.export-chevron {
+  flex-shrink: 0;
+  color: #4b5563;
+  transition: transform 0.15s;
+}
+
+.export-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.export-bin-name {
   font-weight: 700;
   font-size: 15px;
+  color: #0f172a;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.export-bin-number {
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.export-bin-count {
+  font-size: 12px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.export-bin-items {
+  border-top: 1px solid rgba(18, 58, 138, 0.06);
+}
+
+.export-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 48px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s;
+}
+
+.export-item-row:hover {
+  background: rgba(244, 248, 255, 0.5);
+}
+
+.export-item-row.deselected {
+  opacity: 0.5;
+}
+
+.export-item-row input {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.export-item-name {
+  font-weight: 600;
+  font-size: 14px;
   color: #0f172a;
   flex: 1;
   min-width: 0;
@@ -525,51 +651,16 @@ onUnmounted(() => {
 }
 
 .export-item-badge {
-  font-size: 12px;
-  color: #4b5563;
-  background: rgba(14, 42, 99, 0.06);
-  padding: 2px 8px;
-  border-radius: 12px;
-  white-space: nowrap;
+  font-size: 11px;
+  color: #6b7280;
+  flex-shrink: 0;
 }
 
-.export-expand-btn {
-  background: none;
-  border: none;
-  font-size: 12px;
-  color: #4b5563;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
-}
-
-.export-expand-btn:hover {
-  background: rgba(14, 42, 99, 0.06);
-}
-
-.export-variations {
-  padding: 0 14px 12px;
-}
-
-.export-variations table {
-  width: 100%;
-  border-collapse: collapse;
+.export-empty-bin {
+  color: #9ca3af;
+  font-style: italic;
   font-size: 13px;
-}
-
-.export-variations th {
-  text-align: left;
-  padding: 6px 8px;
-  font-weight: 600;
-  color: #4b5563;
-  border-bottom: 1px solid rgba(18, 58, 138, 0.1);
-  font-size: 12px;
-}
-
-.export-variations td {
-  padding: 5px 8px;
-  color: #0f172a;
-  border-bottom: 1px solid rgba(18, 58, 138, 0.04);
+  cursor: default;
 }
 
 .export-loading {

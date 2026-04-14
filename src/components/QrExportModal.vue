@@ -10,6 +10,7 @@ const error = ref('');
 const bins = ref([]);
 const isPrinting = ref(false);
 const dialogRef = ref(null);
+const expandedBins = ref(new Set());
 let previousFocus = null;
 
 const selectedCount = computed(() => bins.value.filter(b => b.selected).length);
@@ -19,6 +20,16 @@ const noneSelected = computed(() => selectedCount.value === 0);
 function toggleAll() {
   const newVal = !allSelected.value;
   bins.value.forEach(b => (b.selected = newVal));
+}
+
+function toggleExpanded(binId) {
+  const next = new Set(expandedBins.value);
+  if (next.has(binId)) {
+    next.delete(binId);
+  } else {
+    next.add(binId);
+  }
+  expandedBins.value = next;
 }
 
 function onKeydown(e) {
@@ -33,21 +44,46 @@ function onKeydown(e) {
   }
 }
 
+function sortBins(list) {
+  return [...list].sort((a, b) => {
+    const aHasNum = a.number != null;
+    const bHasNum = b.number != null;
+    if (aHasNum && bHasNum) return a.number - b.number;
+    if (aHasNum && !bHasNum) return -1;
+    if (!aHasNum && bHasNum) return 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+}
+
 async function fetchBins() {
   isLoading.value = true;
   error.value = '';
   try {
     if (!hasSupabaseConfig || !supabase) throw new Error('Supabase not configured.');
 
-    const { data, error: fetchErr } = await supabase
-      .from('bins')
-      .select('id, name, number')
-      .order('name', { ascending: true });
+    const [{ data: binData, error: binErr }, { data: itemData, error: itemErr }] = await Promise.all([
+      supabase.from('bins').select('id, name, number').order('name', { ascending: true }),
+      supabase.from('items').select('id, name, bin_id').order('name', { ascending: true }),
+    ]);
 
-    if (fetchErr) throw fetchErr;
-    if (!data || !data.length) throw new Error('No bins found.');
+    if (binErr) throw binErr;
+    if (!binData || !binData.length) throw new Error('No bins found.');
+    if (itemErr) throw itemErr;
 
-    bins.value = data.map(b => ({ ...b, selected: true }));
+    const itemsByBin = (itemData || []).reduce((map, item) => {
+      if (!map[item.bin_id]) map[item.bin_id] = [];
+      map[item.bin_id].push(item);
+      return map;
+    }, {});
+
+    bins.value = sortBins(binData).map(b => ({
+      ...b,
+      selected: true,
+      items: itemsByBin[b.id] || [],
+    }));
+
+    // Auto-expand all bins
+    expandedBins.value = new Set(bins.value.map(b => b.id));
   } catch (err) {
     error.value = err?.message || String(err);
   } finally {
@@ -249,17 +285,34 @@ onUnmounted(() => {
             <span class="qr-count">{{ selectedCount }} of {{ bins.length }} bins selected</span>
           </div>
 
-          <!-- Bin list -->
+          <!-- Bin list with dropdowns -->
           <div class="qr-list">
             <div
               v-for="bin in bins"
               :key="bin.id"
-              class="qr-item"
+              class="qr-bin-group"
               :class="{ deselected: !bin.selected }"
-              @click="bin.selected = !bin.selected"
             >
-              <input type="checkbox" :checked="bin.selected" @click.stop @change="bin.selected = !bin.selected" />
-              <span class="qr-item-name">{{ bin.name || bin.id }}<span v-if="bin.number != null" style="color:#4b5563; font-weight:600;"> #{{ bin.number }}</span></span>
+              <div class="qr-bin-header" @click="toggleExpanded(bin.id)">
+                <input type="checkbox" :checked="bin.selected" @click.stop @change="bin.selected = !bin.selected" />
+                <svg
+                  class="qr-chevron"
+                  :class="{ expanded: expandedBins.has(bin.id) }"
+                  width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                >
+                  <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span class="qr-bin-name">{{ bin.name || bin.id }}<span v-if="bin.number != null" class="qr-bin-number"> #{{ bin.number }}</span></span>
+                <span class="qr-bin-item-count">{{ bin.items.length }} item{{ bin.items.length !== 1 ? 's' : '' }}</span>
+              </div>
+              <div v-if="expandedBins.has(bin.id) && bin.items.length" class="qr-bin-items">
+                <div v-for="item in bin.items" :key="item.id" class="qr-bin-item">
+                  {{ item.name }}
+                </div>
+              </div>
+              <div v-if="expandedBins.has(bin.id) && !bin.items.length" class="qr-bin-items">
+                <div class="qr-bin-item qr-bin-empty">Empty bin</div>
+              </div>
             </div>
           </div>
 
@@ -379,35 +432,49 @@ onUnmounted(() => {
   gap: 4px;
 }
 
-.qr-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+.qr-bin-group {
   border: 1px solid rgba(18, 58, 138, 0.08);
   border-radius: 10px;
-  cursor: pointer;
-  user-select: none;
+  overflow: hidden;
   transition: opacity 0.15s;
   flex-shrink: 0;
 }
 
-.qr-item:hover {
-  background: rgba(244, 248, 255, 0.7);
-}
-
-.qr-item.deselected {
+.qr-bin-group.deselected {
   opacity: 0.5;
 }
 
-.qr-item input {
+.qr-bin-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.qr-bin-header:hover {
+  background: rgba(244, 248, 255, 0.7);
+}
+
+.qr-bin-header input {
   width: 16px;
   height: 16px;
   cursor: pointer;
   flex-shrink: 0;
 }
 
-.qr-item-name {
+.qr-chevron {
+  flex-shrink: 0;
+  color: #4b5563;
+  transition: transform 0.15s;
+}
+
+.qr-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.qr-bin-name {
   font-weight: 700;
   font-size: 15px;
   color: #0f172a;
@@ -415,6 +482,33 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.qr-bin-number {
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.qr-bin-item-count {
+  font-size: 12px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.qr-bin-items {
+  border-top: 1px solid rgba(18, 58, 138, 0.06);
+  padding: 4px 14px 8px 48px;
+}
+
+.qr-bin-item {
+  font-size: 13px;
+  color: #374151;
+  padding: 3px 0;
+}
+
+.qr-bin-empty {
+  color: #9ca3af;
+  font-style: italic;
 }
 
 .qr-loading {
