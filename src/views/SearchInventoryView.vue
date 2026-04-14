@@ -58,7 +58,7 @@ function normalizeQuantityTotal(value, fallback = 0) {
 async function fetchBinsWithTotals() {
   const withTotalsResult = await supabase
     .from("bins")
-    .select("id, name, total_quantity")
+    .select("id, name, number, total_quantity")
     .order("name", { ascending: true });
 
   if (
@@ -67,7 +67,7 @@ async function fetchBinsWithTotals() {
   ) {
     const fallbackResult = await supabase
       .from("bins")
-      .select("id, name")
+      .select("id, name, number")
       .order("name", { ascending: true });
 
     return { ...fallbackResult, includesTotals: false };
@@ -313,18 +313,29 @@ const expand = (word) => {
   return mapped ? [word, mapped] : [word];
 };
 
+function sortBins(list) {
+  return [...list].sort((a, b) => {
+    const aHasNum = a.number != null;
+    const bHasNum = b.number != null;
+    if (aHasNum && bHasNum) return a.number - b.number;
+    if (aHasNum && !bHasNum) return -1;
+    if (!aHasNum && bHasNum) return 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+}
+
 const filteredBins = computed(() => {
   const query = sanitize(searchTerm.value);
 
   if (!query) {
-    return bins.value;
+    return sortBins(bins.value);
   }
 
   const queryWords = query.split(" ");
 
-  return bins.value.filter((bin) => {
+  const filtered = bins.value.filter((bin) => {
     const haystack = sanitize(
-      [bin.id, bin.name, ...bin.items.map((item) => item.name)]
+      [bin.id, bin.name, bin.number != null ? String(bin.number) : '', ...bin.items.map((item) => item.name)]
         .filter(Boolean)
         .join(" "),
     );
@@ -336,6 +347,8 @@ const filteredBins = computed(() => {
       );
     });
   });
+
+  return sortBins(filtered);
 });
 
 const grandTotalQuantity = computed(() => {
@@ -373,10 +386,10 @@ function openDelete(bin) {
   showDeleteConfirm.value = true;
 }
 
-async function onCreateSubmit({ name }) {
+async function onCreateSubmit({ name, number }) {
   isSaving.value = true;
   modalError.value = "";
-  const result = await createBin(name);
+  const result = await createBin(name, number);
   isSaving.value = false;
   if (!result.ok) {
     modalError.value = result.error;
@@ -386,10 +399,10 @@ async function onCreateSubmit({ name }) {
   await loadBins();
 }
 
-async function onEditSubmit({ name }) {
+async function onEditSubmit({ name, number }) {
   isSaving.value = true;
   modalError.value = "";
-  const result = await updateBinName(editingBin.value.id, name);
+  const result = await updateBinName(editingBin.value.id, name, number);
   isSaving.value = false;
   if (!result.ok) {
     modalError.value = result.error;
@@ -690,7 +703,7 @@ onUnmounted(stopScan);
         </div>
         <router-link v-if="!selectMode" class="inventory-bin-full" :to="`/search-inventory/${bin.id}`">
           <div class="inventory-bin-link">
-            <div class="inventory-bin-name">{{ bin.name }}</div>
+            <div class="inventory-bin-name">{{ bin.name }}<span v-if="bin.number != null" class="inventory-bin-number"> #{{ bin.number }}</span></div>
             <div class="inventory-bin-total">Total quantity: {{ bin.total_quantity ?? 0 }}</div>
 
             <div class="inventory-bin-summary">Items: {{ bin.items.length }}</div>
@@ -737,7 +750,7 @@ onUnmounted(stopScan);
         </div>
         <div v-else class="inventory-bin-full">
           <div class="inventory-bin-link">
-            <div class="inventory-bin-name">{{ bin.name }}</div>
+            <div class="inventory-bin-name">{{ bin.name }}<span v-if="bin.number != null" class="inventory-bin-number"> #{{ bin.number }}</span></div>
             <div class="inventory-bin-total">Total quantity: {{ bin.total_quantity ?? 0 }}</div>
             <div class="inventory-bin-summary">Items: {{ bin.items.length }}</div>
           </div>
@@ -1041,6 +1054,12 @@ onUnmounted(stopScan);
   font-size: 22px;
   font-weight: 800;
   color: #082145;
+}
+
+.inventory-bin-number {
+  font-weight: 600;
+  color: #4b5563;
+  font-size: 0.85em;
 }
 
 .inventory-bin-summary {

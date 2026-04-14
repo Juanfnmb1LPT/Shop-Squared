@@ -11,6 +11,7 @@ const props = defineProps({
 const emit = defineEmits(['submit', 'cancel', 'delete']);
 
 const formName = ref('');
+const formNumber = ref('');
 const validationError = ref('');
 const nameInput = ref(null);
 const dialogRef = ref(null);
@@ -33,6 +34,7 @@ onMounted(async () => {
     document.addEventListener('keydown', onKeydown);
     if (props.initialBin) {
         formName.value = props.initialBin.name ?? '';
+        formNumber.value = props.initialBin.number != null ? String(props.initialBin.number) : '';
     }
     await nextTick();
     nameInput.value?.focus();
@@ -49,7 +51,14 @@ function onSubmit() {
         validationError.value = 'Bin name is required.';
         return;
     }
-    emit('submit', { name: formName.value.trim() });
+    const payload = { name: formName.value.trim() };
+    const numStr = String(formNumber.value ?? '').trim();
+    if (numStr !== '') {
+        payload.number = Number(numStr);
+    } else {
+        payload.number = null;
+    }
+    emit('submit', payload);
 }
 </script>
 
@@ -79,6 +88,17 @@ function onSubmit() {
                         type="text"
                         autocomplete="off"
                         placeholder="e.g. Bin 1"
+                        :disabled="isSaving"
+                    />
+
+                    <label class="bin-modal-label" for="bin-form-number">Number</label>
+                    <input
+                        id="bin-form-number"
+                        v-model="formNumber"
+                        class="bin-modal-input"
+                        type="number"
+                        autocomplete="off"
+                        placeholder="Optional — must be unique"
                         :disabled="isSaving"
                     />
 

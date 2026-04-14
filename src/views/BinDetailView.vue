@@ -97,12 +97,12 @@ function normalizeQuantityTotal(value, fallback = 0) {
 async function fetchBinRecord() {
   const withTotalsResult = await supabase
     .from('bins')
-    .select('id, name, total_quantity')
+    .select('id, name, number, total_quantity')
     .eq('id', binId.value)
     .maybeSingle();
 
   if (withTotalsResult.error && /total_quantity|column/i.test(withTotalsResult.error.message || '')) {
-    return supabase.from('bins').select('id, name').eq('id', binId.value).maybeSingle();
+    return supabase.from('bins').select('id, name, number').eq('id', binId.value).maybeSingle();
   }
 
   return withTotalsResult;
@@ -143,7 +143,7 @@ async function loadBinDetail(options = {}) {
     { data: binData, error: binError },
     { data: itemData, error: itemError }
   ] = await Promise.all([
-    supabase.from('bins').select('id, name').order('name', { ascending: true }),
+    supabase.from('bins').select('id, name, number').order('name', { ascending: true }),
     fetchBinRecord(),
     fetchItemsForBin(),
   ]);
@@ -292,6 +292,13 @@ function closeItemDeleteConfirm() {
 async function onCreateItemSubmit({ name, binId: targetBinId, genMode, sizes, colors, baseSku, price, color, style }) {
   isItemSaving.value = true;
   itemModalError.value = '';
+
+  // Prepend bin number to base SKU if the bin has one
+  const binNumber = bin.value?.number;
+  if (binNumber != null && baseSku) {
+    baseSku = `${binNumber}-${baseSku}`;
+  }
+
   const hasVariations = (genMode === 'colors' && colors?.length) || (genMode === 'sizes' && sizes?.length);
   const result = await createItem({
     name,
@@ -673,10 +680,10 @@ function openDelete() {
   showDeleteConfirm.value = true;
 }
 
-async function onEditSubmit({ name }) {
+async function onEditSubmit({ name, number }) {
   isSaving.value = true;
   modalError.value = '';
-  const result = await updateBinName(binId.value, name);
+  const result = await updateBinName(binId.value, name, number);
   isSaving.value = false;
   if (!result.ok) {
     modalError.value = result.error;
@@ -850,7 +857,7 @@ onMounted(loadBinDetail);
       <div class="inventory-detail-header reveal-fade-up">
         <div>
           <div class="inventory-detail-kicker">Search Inventory</div>
-          <div class="hero-title inventory-detail-title">{{ bin.name }}</div>
+          <div class="hero-title inventory-detail-title">{{ bin.name }}<span v-if="bin.number != null" class="inventory-detail-number"> #{{ bin.number }}</span></div>
           <div class="inventory-detail-qty">Total quantity: {{ bin.total_quantity ?? 0 }}</div>
         </div>
 
@@ -1231,6 +1238,12 @@ onMounted(loadBinDetail);
 
 .inventory-detail-title {
   text-align: left;
+}
+
+.inventory-detail-number {
+  font-weight: 600;
+  color: #4b5563;
+  font-size: 0.85em;
 }
 
 .inventory-detail-qty {

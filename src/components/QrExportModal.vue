@@ -41,7 +41,7 @@ async function fetchBins() {
 
     const { data, error: fetchErr } = await supabase
       .from('bins')
-      .select('id, name')
+      .select('id, name, number')
       .order('name', { ascending: true });
 
     if (fetchErr) throw fetchErr;
@@ -77,7 +77,7 @@ async function doPrint() {
           margin: 1,
           errorCorrectionLevel: 'M',
         });
-        return { name: bin.name || bin.id, id: bin.id, dataUrl };
+        return { name: bin.name || bin.id, number: bin.number, id: bin.id, dataUrl };
       })
     );
 
@@ -95,11 +95,17 @@ async function doPrint() {
       labelsHtml += `<div class="page${p > 0 ? ' page-break' : ''}">`;
       labelsHtml += '<div class="grid">';
       for (const entry of page) {
+        const numberHtml = entry.number != null
+          ? `<div class="bin-number">${escapeHtml(String(entry.number))}</div>`
+          : '';
         labelsHtml += `
           <div class="label">
             <div class="label-border">
               <div class="title">${escapeHtml(entry.name)}</div>
-              <img src="${entry.dataUrl}" alt="QR code for ${escapeHtml(entry.id)}" />
+              <div class="qr-row">
+                ${numberHtml}
+                <img src="${entry.dataUrl}" alt="QR code for ${escapeHtml(entry.id)}" />
+              </div>
             </div>
           </div>`;
       }
@@ -167,10 +173,23 @@ async function doPrint() {
               line-height: 1.1;
               word-break: break-word;
             }
+            .qr-row {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 16px;
+            }
+            .bin-number {
+              font-size: 72px;
+              font-weight: 900;
+              color: #0f172a;
+              line-height: 1;
+            }
             img {
               width: 180px;
               height: 180px;
               display: block;
+              flex-shrink: 0;
             }
           </style>
         </head>
@@ -240,7 +259,7 @@ onUnmounted(() => {
               @click="bin.selected = !bin.selected"
             >
               <input type="checkbox" :checked="bin.selected" @click.stop @change="bin.selected = !bin.selected" />
-              <span class="qr-item-name">{{ bin.name || bin.id }}</span>
+              <span class="qr-item-name">{{ bin.name || bin.id }}<span v-if="bin.number != null" style="color:#4b5563; font-weight:600;"> #{{ bin.number }}</span></span>
             </div>
           </div>
 
