@@ -7,6 +7,12 @@ import { hasSupabaseConfig, supabase } from "../lib/supabase";
 import { createBin, updateBinName, deleteBin } from "../lib/binCrud";
 import BinFormModal from "../components/BinFormModal.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
+import InventoryFilterModal from "../components/InventoryFilterModal.vue";
+import {
+  useInventoryFilters,
+  setInventoryFilters,
+  clearInventoryFilters,
+} from "../lib/inventoryFilters";
 
 const router = useRouter();
 const searchTerm = ref(sessionStorage.getItem("inventory-search") || "");
@@ -17,6 +23,92 @@ watch(searchTerm, (value) => {
   } else {
     sessionStorage.removeItem("inventory-search");
   }
+});
+
+const filters = useInventoryFilters();
+const showFilterModal = ref(false);
+
+const filterOptions = ref(null);
+const filterOptionsLoading = ref(false);
+const filterOptionsError = ref("");
+
+const filterMatchByItemId = ref(null);
+const filterMatchLoading = ref(false);
+const filterMatchError = ref("");
+
+async function loadInventorySummary() {
+  if (!hasSupabaseConfig || !supabase) return;
+
+  filterOptionsLoading.value = true;
+  filterOptionsError.value = "";
+
+  const { data, error } = await supabase.rpc("get_inventory_summary");
+
+  filterOptionsLoading.value = false;
+
+  if (error) {
+    filterOptionsError.value = error.message;
+    filterOptions.value = { sizes: [], colors: [], styles: [] };
+    totalVariations.value = null;
+    totalItems.value = null;
+    return;
+  }
+
+  filterOptions.value = {
+    sizes: data?.sizes || [],
+    colors: data?.colors || [],
+    styles: data?.styles || [],
+  };
+  totalVariations.value =
+    typeof data?.total_variations === "number" ? data.total_variations : null;
+  totalItems.value =
+    typeof data?.unique_items_with_variations === "number"
+      ? data.unique_items_with_variations
+      : null;
+}
+
+async function recomputeFilterMatches() {
+  const f = filters.value;
+  const hasFilters =
+    f.inStockOnly || f.sizes.length || f.colors.length || f.styles.length;
+
+  if (!hasFilters) {
+    filterMatchByItemId.value = null;
+    filterMatchError.value = "";
+    return;
+  }
+
+  if (!hasSupabaseConfig || !supabase) return;
+
+  filterMatchLoading.value = true;
+  filterMatchError.value = "";
+
+  let query = supabase.from("item_variations").select("item_id, quantity");
+  if (f.inStockOnly) query = query.gt("quantity", 0);
+  if (f.sizes.length) query = query.in("size", f.sizes);
+  if (f.colors.length) query = query.in("color", f.colors);
+  if (f.styles.length) query = query.in("style", f.styles);
+
+  const { data, error } = await query;
+  filterMatchLoading.value = false;
+
+  if (error) {
+    filterMatchError.value = error.message;
+    filterMatchByItemId.value = new Map();
+    return;
+  }
+
+  const map = new Map();
+  for (const variation of data || []) {
+    const prev = map.get(variation.item_id) || 0;
+    map.set(variation.item_id, prev + Number(variation.quantity || 0));
+  }
+  filterMatchByItemId.value = map;
+}
+
+watch(filters, () => recomputeFilterMatches(), {
+  deep: true,
+  immediate: true,
 });
 
 const bins = ref([]);
@@ -324,16 +416,50 @@ function sortBins(list) {
   });
 }
 
+const availableSizes = computed(() => filterOptions.value?.sizes || []);
+const availableColors = computed(() => filterOptions.value?.colors || []);
+const availableStyles = computed(() => filterOptions.value?.styles || []);
+
+const activeFilterCount = computed(() => {
+  return (
+    (filters.value.inStockOnly ? 1 : 0) +
+    filters.value.sizes.length +
+    filters.value.colors.length +
+    filters.value.styles.length
+  );
+});
+
 const filteredBins = computed(() => {
   const query = sanitize(searchTerm.value);
+  const matchMap = filterMatchByItemId.value;
+
+  let working = bins.value;
+
+  if (matchMap) {
+    working = working
+      .map((bin) => {
+        const items = bin.items
+          .filter((item) => matchMap.has(item.id))
+          .map((item) => ({
+            ...item,
+            total_quantity: matchMap.get(item.id) ?? 0,
+          }));
+        const total = items.reduce(
+          (sum, item) => sum + normalizeQuantityTotal(item.total_quantity),
+          0,
+        );
+        return { ...bin, items, total_quantity: total };
+      })
+      .filter((bin) => bin.items.length > 0);
+  }
 
   if (!query) {
-    return sortBins(bins.value);
+    return sortBins(working);
   }
 
   const queryWords = query.split(" ");
 
-  const filtered = bins.value.filter((bin) => {
+  const filtered = working.filter((bin) => {
     const haystack = sanitize(
       [bin.id, bin.name, bin.number != null ? String(bin.number) : '', ...bin.items.map((item) => item.name)]
         .filter(Boolean)
@@ -350,6 +476,19 @@ const filteredBins = computed(() => {
 
   return sortBins(filtered);
 });
+
+function openFilters() {
+  showFilterModal.value = true;
+}
+
+function onFiltersApplied(next) {
+  setInventoryFilters(next);
+  showFilterModal.value = false;
+}
+
+function clearFilters() {
+  clearInventoryFilters();
+}
 
 const grandTotalQuantity = computed(() => {
   return bins.value.reduce(
@@ -535,12 +674,15 @@ async function loadBins() {
         return;
       }
 
-      variationTotalsByItemId = (variationData || []).reduce((groupedTotals, variation) => {
-        const previousTotal = groupedTotals[variation.item_id] || 0;
-        groupedTotals[variation.item_id] =
-          previousTotal + normalizeQuantityTotal(variation.quantity);
-        return groupedTotals;
-      }, {});
+      variationTotalsByItemId = (variationData || []).reduce(
+        (groupedTotals, variation) => {
+          const previousTotal = groupedTotals[variation.item_id] || 0;
+          groupedTotals[variation.item_id] =
+            previousTotal + normalizeQuantityTotal(variation.quantity);
+          return groupedTotals;
+        },
+        {},
+      );
     }
 
     const normalizedItems = (itemData || []).map((item) => ({
@@ -559,31 +701,6 @@ async function loadBins() {
       return groupedItems;
     }, {});
 
-    bins.value = (binData || []).map((bin) => ({
-      ...bin,
-      items: itemsByBinId[bin.id] || [],
-    }));
-
-    // Fetch total variations count and unique items count
-    try {
-      const { error: countError, count } = await supabase
-        .from('item_variations')
-        .select('id', { count: 'exact', head: true });
-      totalVariations.value = countError ? null : (count ?? 0);
-
-      const { data: itemData, error: itemError } = await supabase
-        .from('item_variations')
-        .select('item_id');
-      if (itemError) {
-        totalItems.value = null;
-      } else {
-        const uniqueItems = new Set(itemData.map((r) => r.item_id));
-        totalItems.value = uniqueItems.size;
-      }
-    } catch (e) {
-      totalVariations.value = null;
-      totalItems.value = null;
-    }
     bins.value = (binData || []).map((bin) => {
       const groupedItems = itemsByBinId[bin.id] || [];
       const computedBinTotal = groupedItems.reduce(
@@ -604,7 +721,10 @@ async function loadBins() {
   isLoading.value = false;
 }
 
-onMounted(loadBins);
+onMounted(() => {
+  loadBins();
+  loadInventorySummary();
+});
 onUnmounted(stopScan);
 </script>
 
@@ -645,6 +765,20 @@ onUnmounted(stopScan);
         />
 
         <button
+          class="inventory-filter-button"
+          :class="{ 'inventory-filter-button-active': activeFilterCount > 0 }"
+          type="button"
+          aria-label="Open filters"
+          @click="openFilters"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M3 5h18M6 12h12M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Filters</span>
+          <span v-if="activeFilterCount > 0" class="inventory-filter-badge">{{ activeFilterCount }}</span>
+        </button>
+
+        <button
           class="inventory-scan-button"
           type="button"
           :aria-label="isScanning ? 'Stop QR scanner' : 'Start QR scanner'"
@@ -653,6 +787,15 @@ onUnmounted(stopScan);
           <span class="inventory-scan-icon" aria-hidden="true">CAM</span>
           <span>{{ isScanning ? "Stop" : "Scan" }}</span>
         </button>
+      </div>
+
+      <div v-if="activeFilterCount > 0" class="inventory-filter-summary">
+        <span class="inventory-filter-summary-label">Active filters:</span>
+        <span v-if="filters.inStockOnly" class="inventory-filter-pill">In stock only</span>
+        <span v-for="size in filters.sizes" :key="`pill-size-${size}`" class="inventory-filter-pill">Size: {{ size }}</span>
+        <span v-for="color in filters.colors" :key="`pill-color-${color}`" class="inventory-filter-pill">Color: {{ color }}</span>
+        <span v-for="style in filters.styles" :key="`pill-style-${style}`" class="inventory-filter-pill">Style: {{ style }}</span>
+        <button class="inventory-filter-clear" type="button" @click="clearFilters">Clear filters</button>
       </div>
 
       <p class="inventory-search-help">
@@ -768,9 +911,15 @@ onUnmounted(stopScan);
             <polyline v-if="!searchTerm.trim()" points="3.27 6.96 12 12.01 20.73 6.96" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             <line v-if="!searchTerm.trim()" x1="12" y1="22.08" x2="12" y2="12" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <div class="empty-state-title">{{ searchTerm.trim() ? 'No results found' : 'No bins yet' }}</div>
-          <div class="empty-state-sub">{{ searchTerm.trim() ? `Nothing matched "${searchTerm.trim()}". Try a different search.` : 'Create your first bin to start organizing inventory.' }}</div>
-          <button v-if="!searchTerm.trim()" class="btn" type="button" @click="openCreate">+ Create Bin</button>
+          <div class="empty-state-title">{{ (searchTerm.trim() || activeFilterCount) ? 'No results found' : 'No bins yet' }}</div>
+          <div class="empty-state-sub">
+            <template v-if="searchTerm.trim() && activeFilterCount">Nothing matched "{{ searchTerm.trim() }}" with the current filters. Try a different search or adjust filters.</template>
+            <template v-else-if="searchTerm.trim()">Nothing matched "{{ searchTerm.trim() }}". Try a different search.</template>
+            <template v-else-if="activeFilterCount">No bins contain items matching the current filters.</template>
+            <template v-else>Create your first bin to start organizing inventory.</template>
+          </div>
+          <button v-if="activeFilterCount" class="btn secondary" type="button" @click="clearFilters">Clear filters</button>
+          <button v-if="!searchTerm.trim() && !activeFilterCount" class="btn" type="button" @click="openCreate">+ Create Bin</button>
         </div>
       </div>
     </div>
@@ -793,6 +942,16 @@ onUnmounted(stopScan);
       @submit="onEditSubmit"
       @cancel="showEditModal = false; editingBin = null; modalError = ''"
       @delete="onEditBinDelete"
+    />
+
+    <InventoryFilterModal
+      v-if="showFilterModal"
+      :initial-filters="filters"
+      :available-sizes="availableSizes"
+      :available-colors="availableColors"
+      :available-styles="availableStyles"
+      @apply="onFiltersApplied"
+      @cancel="showFilterModal = false"
     />
 
     <ConfirmModal
@@ -886,6 +1045,98 @@ onUnmounted(stopScan);
 .inventory-scan-button:hover {
   border-color: rgba(37, 99, 235, 0.32);
   background: rgba(215, 230, 255, 0.95);
+}
+
+.inventory-filter-button {
+  min-height: 50px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(18, 58, 138, 0.18);
+  border-radius: 14px;
+  background: rgba(233, 241, 255, 0.9);
+  color: #0a2b67;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inventory-filter-button:hover {
+  border-color: rgba(37, 99, 235, 0.32);
+  background: rgba(215, 230, 255, 0.95);
+}
+
+.inventory-filter-button-active {
+  background: linear-gradient(90deg, #2563eb, #0b63d6);
+  color: #fff;
+  border-color: transparent;
+}
+
+.inventory-filter-button-active:hover {
+  background: linear-gradient(90deg, #1e4fd1, #0856bf);
+}
+
+.inventory-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fff;
+  color: #0b63d6;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.inventory-filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(219, 234, 254, 0.45);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+}
+
+.inventory-filter-summary-label {
+  font-weight: 700;
+  font-size: 13px;
+  color: #0a2b67;
+  margin-right: 4px;
+}
+
+.inventory-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #fff;
+  color: #0a2b67;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.inventory-filter-clear {
+  margin-left: auto;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: rgba(255, 238, 238, 0.95);
+  color: #991b1b;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.inventory-filter-clear:hover {
+  background: rgba(255, 220, 220, 0.95);
 }
 
 .inventory-search-help {
