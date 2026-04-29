@@ -9,6 +9,17 @@ import BinFormModal from '../components/BinFormModal.vue';
 import ConfirmModal from '../components/ConfirmModal.vue';
 import ItemFormModal from '../components/ItemFormModal.vue';
 import VariationFormModal from '../components/VariationFormModal.vue';
+import {
+  useInventoryFilters,
+  clearInventoryFilters,
+  variationMatchesFilters,
+  hasActiveFilters,
+  activeFilterCount as activeFilterCountFn,
+} from '../lib/inventoryFilters';
+
+const filters = useInventoryFilters();
+const activeFilterCount = computed(() => activeFilterCountFn(filters.value));
+const filtersAreActive = computed(() => hasActiveFilters(filters.value));
 
 const route = useRoute();
 const router = useRouter();
@@ -215,14 +226,31 @@ async function loadBinDetail(options = {}) {
       };
     }
 
-    expandedItems.value = expandedItemIds.reduce((groupedExpandedItems, itemId) => {
+    const initialExpanded = expandedItemIds.reduce((groupedExpandedItems, itemId) => {
       groupedExpandedItems[itemId] = true;
       return groupedExpandedItems;
     }, {});
+
+    if (filtersAreActive.value) {
+      for (const item of items.value) {
+        if (itemVariations(item.id).length > 0) initialExpanded[item.id] = true;
+      }
+    }
+
+    expandedItems.value = initialExpanded;
   }
 
   isLoading.value = false;
 }
+
+watch(filtersAreActive, (active) => {
+  if (!active) return;
+  const next = { ...expandedItems.value };
+  for (const item of items.value) {
+    if (itemVariations(item.id).length > 0) next[item.id] = true;
+  }
+  expandedItems.value = next;
+});
 
 function toggleItem(itemId) {
   expandedItems.value = {
@@ -239,7 +267,35 @@ function formatPrice(value) {
 }
 
 function itemVariations(itemId) {
-  return variationsByItemId.value[itemId] || [];
+  const all = variationsByItemId.value[itemId] || [];
+  if (!filtersAreActive.value) return all;
+  return all.filter((v) => variationMatchesFilters(v, filters.value));
+}
+
+const filteredItems = computed(() => {
+  if (!filtersAreActive.value) return items.value;
+  return items.value.filter((item) => itemVariations(item.id).length > 0);
+});
+
+function clearFiltersFromBin() {
+  clearInventoryFilters();
+}
+
+const filteredBinTotal = computed(() => {
+  if (!filtersAreActive.value) return bin.value?.total_quantity ?? 0;
+  return filteredItems.value.reduce((sum, item) => {
+    const matched = itemVariations(item.id);
+    const itemTotal = matched.reduce((s, v) => s + Number(v.quantity || 0), 0);
+    return sum + itemTotal;
+  }, 0);
+});
+
+function itemFilteredQuantity(itemId) {
+  if (!filtersAreActive.value) return null;
+  return itemVariations(itemId).reduce(
+    (sum, v) => sum + Number(v.quantity || 0),
+    0,
+  );
 }
 
 function formatVariationPrice(value) {
@@ -858,13 +914,24 @@ onMounted(loadBinDetail);
         <div>
           <div class="inventory-detail-kicker">Search Inventory</div>
           <div class="hero-title inventory-detail-title">{{ bin.name }}<span v-if="bin.number != null" class="inventory-detail-number"> #{{ bin.number }}</span></div>
-          <div class="inventory-detail-qty">Total quantity: {{ bin.total_quantity ?? 0 }}</div>
+          <div class="inventory-detail-qty">
+            Total quantity: {{ filteredBinTotal ?? 0 }}<span v-if="filtersAreActive" class="inventory-detail-qty-tag"> (filtered)</span>
+          </div>
         </div>
 
         <div class="inventory-detail-header-actions">
           <button class="btn secondary" type="button" @click="openEdit">Edit Bin</button>
           <router-link class="btn secondary" to="/search-inventory">Back</router-link>
         </div>
+      </div>
+
+      <div v-if="filtersAreActive" class="inventory-filter-summary">
+        <span class="inventory-filter-summary-label">Active filters:</span>
+        <span v-if="filters.inStockOnly" class="inventory-filter-pill">In stock only</span>
+        <span v-for="size in filters.sizes" :key="`bin-pill-size-${size}`" class="inventory-filter-pill">Size: {{ size }}</span>
+        <span v-for="color in filters.colors" :key="`bin-pill-color-${color}`" class="inventory-filter-pill">Color: {{ color }}</span>
+        <span v-for="style in filters.styles" :key="`bin-pill-style-${style}`" class="inventory-filter-pill">Style: {{ style }}</span>
+        <button class="inventory-filter-clear" type="button" @click="clearFiltersFromBin">Clear filters</button>
       </div>
 
       <div class="inventory-detail-panel reveal-fade-up reveal-delay-1">
@@ -901,9 +968,9 @@ onMounted(loadBinDetail);
           </div>
         </div>
 
-        <div v-if="items.length" class="inventory-item-list">
+        <div v-if="filteredItems.length" class="inventory-item-list">
           <div
-            v-for="item in items"
+            v-for="item in filteredItems"
             :key="item.id"
             class="inventory-item-card"
             :class="{ 'inventory-item-selected': itemSelectMode && selectedItemIds.has(item.id) }"
@@ -919,7 +986,9 @@ onMounted(loadBinDetail);
               <button class="inventory-item-toggle" type="button" @click="itemSelectMode ? toggleItemSelection(item.id) : toggleItem(item.id)">
                 <span class="inventory-item-name-shell">
                   <span class="inventory-item-name">{{ item.name }}</span>
-                  <span class="inventory-item-total"> Item Quantity: {{ item.total_quantity ?? 0 }}</span>
+                  <span class="inventory-item-total">
+                    Item Quantity: {{ filtersAreActive ? itemFilteredQuantity(item.id) : (item.total_quantity ?? 0) }}<span v-if="filtersAreActive" class="inventory-item-total-tag"> (filtered)</span>
+                  </span>
                 </span>
                 <span v-if="!itemSelectMode" class="inventory-item-toggle-label">
                   {{ expandedItems[item.id] ? `Hide ${itemVariations(item.id).length} variations` : `Show ${itemVariations(item.id).length} variations` }}
@@ -1031,6 +1100,15 @@ onMounted(loadBinDetail);
               </div>
             </div>
           </div>
+        </div>
+
+        <div v-else-if="filtersAreActive && items.length" class="inventory-detail-no-items">
+          <svg class="empty-state-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM21 21l-4.35-4.35" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="empty-state-title">No matches in this bin</div>
+          <div class="empty-state-sub">Nothing in this bin matches the current filters.</div>
+          <button class="btn secondary" type="button" @click="clearFiltersFromBin">Clear filters</button>
         </div>
 
         <div v-else class="inventory-detail-no-items">
@@ -1251,6 +1329,63 @@ onMounted(loadBinDetail);
   text-align: left;
   font-weight: 700;
   color: #0f1f46;
+}
+
+.inventory-detail-qty-tag,
+.inventory-item-total-tag {
+  font-weight: 600;
+  color: #0b63d6;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.inventory-filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(219, 234, 254, 0.45);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  margin-top: 8px;
+}
+
+.inventory-filter-summary-label {
+  font-weight: 700;
+  font-size: 13px;
+  color: #0a2b67;
+  margin-right: 4px;
+}
+
+.inventory-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #fff;
+  color: #0a2b67;
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.inventory-filter-clear {
+  margin-left: auto;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: rgba(255, 238, 238, 0.95);
+  color: #991b1b;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.inventory-filter-clear:hover {
+  background: rgba(255, 220, 220, 0.95);
 }
 
 .inventory-detail-subtitle {
