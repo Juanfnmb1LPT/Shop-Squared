@@ -15,6 +15,7 @@ import {
   variationMatchesFilters,
   hasActiveFilters,
   activeFilterCount as activeFilterCountFn,
+  displayColor,
 } from '../lib/inventoryFilters';
 
 const filters = useInventoryFilters();
@@ -929,7 +930,7 @@ onMounted(loadBinDetail);
         <span class="inventory-filter-summary-label">Active filters:</span>
         <span v-if="filters.inStockOnly" class="inventory-filter-pill">In stock only</span>
         <span v-for="size in filters.sizes" :key="`bin-pill-size-${size}`" class="inventory-filter-pill">Size: {{ size }}</span>
-        <span v-for="color in filters.colors" :key="`bin-pill-color-${color}`" class="inventory-filter-pill">Color: {{ color }}</span>
+        <span v-for="color in filters.colors" :key="`bin-pill-color-${color}`" class="inventory-filter-pill">Color: {{ displayColor(color) }}</span>
         <span v-for="style in filters.styles" :key="`bin-pill-style-${style}`" class="inventory-filter-pill">Style: {{ style }}</span>
         <button class="inventory-filter-clear" type="button" @click="clearFiltersFromBin">Clear filters</button>
       </div>

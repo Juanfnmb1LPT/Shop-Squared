@@ -12,6 +12,8 @@ import {
   useInventoryFilters,
   setInventoryFilters,
   clearInventoryFilters,
+  displayColor,
+  canonicalColor,
 } from "../lib/inventoryFilters";
 
 const router = useRouter();
@@ -83,10 +85,9 @@ async function recomputeFilterMatches() {
   filterMatchLoading.value = true;
   filterMatchError.value = "";
 
-  let query = supabase.from("item_variations").select("item_id, quantity");
+  let query = supabase.from("item_variations").select("item_id, quantity, color");
   if (f.inStockOnly) query = query.gt("quantity", 0);
   if (f.sizes.length) query = query.in("size", f.sizes);
-  if (f.colors.length) query = query.in("color", f.colors);
   if (f.styles.length) query = query.in("style", f.styles);
 
   const { data, error } = await query;
@@ -98,8 +99,10 @@ async function recomputeFilterMatches() {
     return;
   }
 
+  const colorSet = f.colors.length ? new Set(f.colors) : null;
   const map = new Map();
   for (const variation of data || []) {
+    if (colorSet && !colorSet.has(canonicalColor(variation.color))) continue;
     const prev = map.get(variation.item_id) || 0;
     map.set(variation.item_id, prev + Number(variation.quantity || 0));
   }
@@ -793,7 +796,7 @@ onUnmounted(stopScan);
         <span class="inventory-filter-summary-label">Active filters:</span>
         <span v-if="filters.inStockOnly" class="inventory-filter-pill">In stock only</span>
         <span v-for="size in filters.sizes" :key="`pill-size-${size}`" class="inventory-filter-pill">Size: {{ size }}</span>
-        <span v-for="color in filters.colors" :key="`pill-color-${color}`" class="inventory-filter-pill">Color: {{ color }}</span>
+        <span v-for="color in filters.colors" :key="`pill-color-${color}`" class="inventory-filter-pill">Color: {{ displayColor(color) }}</span>
         <span v-for="style in filters.styles" :key="`pill-style-${style}`" class="inventory-filter-pill">Style: {{ style }}</span>
         <button class="inventory-filter-clear" type="button" @click="clearFilters">Clear filters</button>
       </div>
