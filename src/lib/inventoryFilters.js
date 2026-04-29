@@ -2,6 +2,20 @@ import { ref, watch } from 'vue';
 
 const STORAGE_KEY = 'inventory-filters';
 
+export function canonicalColor(value) {
+    return String(value ?? '').trim().toLowerCase();
+}
+
+export function displayColor(value) {
+    const lower = canonicalColor(value);
+    if (!lower) return '';
+    return lower.replace(/\b([a-z])/g, (_, ch) => ch.toUpperCase());
+}
+
+function uniqueCanonical(list) {
+    return [...new Set((list || []).map(canonicalColor).filter(Boolean))];
+}
+
 export function defaultFilters() {
     return { inStockOnly: false, sizes: [], colors: [], styles: [] };
 }
@@ -14,7 +28,7 @@ function readStoredFilters() {
         return {
             inStockOnly: !!parsed.inStockOnly,
             sizes: Array.isArray(parsed.sizes) ? parsed.sizes : [],
-            colors: Array.isArray(parsed.colors) ? parsed.colors : [],
+            colors: Array.isArray(parsed.colors) ? uniqueCanonical(parsed.colors) : [],
             styles: Array.isArray(parsed.styles) ? parsed.styles : [],
         };
     } catch {
@@ -50,7 +64,7 @@ export function variationMatchesFilters(variation, filters) {
         if (!filters.sizes.includes(v)) return false;
     }
     if (filters.colors.length) {
-        const v = String(variation?.color ?? '').trim();
+        const v = canonicalColor(variation?.color);
         if (!filters.colors.includes(v)) return false;
     }
     if (filters.styles.length) {
@@ -90,7 +104,7 @@ export function setInventoryFilters(next) {
     inventoryFilters.value = {
         inStockOnly: !!next?.inStockOnly,
         sizes: [...(next?.sizes || [])],
-        colors: [...(next?.colors || [])],
+        colors: uniqueCanonical(next?.colors),
         styles: [...(next?.styles || [])],
     };
 }

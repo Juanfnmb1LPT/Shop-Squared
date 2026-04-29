@@ -1,5 +1,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { canonicalColor, displayColor } from '../lib/inventoryFilters';
+import { groupColorsByFamily } from '../lib/colorFamilies';
 
 const props = defineProps({
     initialFilters: {
@@ -17,7 +19,7 @@ let previousFocus = null;
 
 const inStockOnly = ref(!!props.initialFilters.inStockOnly);
 const selectedSizes = ref([...(props.initialFilters.sizes || [])]);
-const selectedColors = ref([...(props.initialFilters.colors || [])]);
+const selectedColors = ref([...(props.initialFilters.colors || [])].map(canonicalColor).filter(Boolean));
 const selectedStyles = ref([...(props.initialFilters.styles || [])]);
 
 const sizeOrder = { XS: 0, S: 1, M: 2, L: 3, XL: 4, '2XL': 5, '3XL': 6 };
@@ -31,25 +33,59 @@ const sortedSizes = computed(() => {
     });
 });
 
-const sortedColors = computed(() => {
-    return [...props.availableColors].sort((a, b) => String(a).localeCompare(String(b)));
+const colorEntries = computed(() => {
+    const map = new Map();
+    for (const raw of props.availableColors) {
+        const canon = canonicalColor(raw);
+        if (!canon) continue;
+        if (!map.has(canon)) {
+            map.set(canon, { canonical: canon, label: displayColor(raw) });
+        }
+    }
+    return [...map.values()];
 });
 
-const COLOR_PREVIEW_COUNT = 10;
-const showAllColors = ref(false);
+const colorFamilies = computed(() => groupColorsByFamily(colorEntries.value));
 
-const visibleColors = computed(() => {
-    if (showAllColors.value) return sortedColors.value;
-    const head = sortedColors.value.slice(0, COLOR_PREVIEW_COUNT);
-    const hiddenSelected = sortedColors.value
-        .slice(COLOR_PREVIEW_COUNT)
-        .filter((c) => selectedColors.value.includes(c));
-    return [...head, ...hiddenSelected];
+const expandedFamily = ref('');
+
+const activeFamily = computed(() => {
+    if (!expandedFamily.value) return null;
+    return colorFamilies.value.find((f) => f.name === expandedFamily.value) || null;
 });
 
-const hiddenColorCount = computed(() => {
-    return Math.max(0, sortedColors.value.length - COLOR_PREVIEW_COUNT);
-});
+function isFamilyExpanded(name) {
+    return expandedFamily.value === name;
+}
+
+function toggleFamily(name) {
+    expandedFamily.value = expandedFamily.value === name ? '' : name;
+}
+
+function selectedInFamilyCount(family) {
+    return family.items.reduce(
+        (n, item) => (selectedColors.value.includes(item.canonical) ? n + 1 : n),
+        0,
+    );
+}
+
+function allSelectedInFamily(family) {
+    return (
+        family.items.length > 0 &&
+        family.items.every((i) => selectedColors.value.includes(i.canonical))
+    );
+}
+
+function toggleAllInFamily(family) {
+    if (allSelectedInFamily(family)) {
+        const remove = new Set(family.items.map((i) => i.canonical));
+        selectedColors.value = selectedColors.value.filter((c) => !remove.has(c));
+    } else {
+        const next = new Set(selectedColors.value);
+        for (const item of family.items) next.add(item.canonical);
+        selectedColors.value = [...next];
+    }
+}
 
 const sortedStyles = computed(() => {
     return [...props.availableStyles].sort((a, b) => String(a).localeCompare(String(b)));
@@ -196,37 +232,54 @@ onUnmounted(() => {
                             Color
                             <span v-if="selectedColors.length" class="filter-count-badge">{{ selectedColors.length }}</span>
                         </div>
-                        <div v-if="sortedColors.length" class="filter-chip-row">
-                            <button
-                                v-for="color in visibleColors"
-                                :key="`color-${color}`"
-                                type="button"
-                                class="filter-chip"
-                                :class="{ 'filter-chip-active': selectedColors.includes(color) }"
-                                @click="toggleColor(color)"
-                            >
-                                {{ color }}
-                            </button>
+                        <div v-if="colorFamilies.length" class="filter-family-wrap">
+                            <div class="filter-family-pills">
+                                <button
+                                    v-for="family in colorFamilies"
+                                    :key="`fam-pill-${family.name}`"
+                                    type="button"
+                                    class="filter-family-pill"
+                                    :class="{
+                                        'filter-family-pill-active': isFamilyExpanded(family.name),
+                                        'filter-family-pill-has-selection': selectedInFamilyCount(family) > 0,
+                                    }"
+                                    :aria-expanded="isFamilyExpanded(family.name)"
+                                    @click="toggleFamily(family.name)"
+                                >
+                                    <span class="filter-family-pill-name">{{ family.name }}</span>
+                                    <span class="filter-family-pill-count">{{ family.items.length }}</span>
+                                    <span
+                                        v-if="selectedInFamilyCount(family) > 0"
+                                        class="filter-family-pill-selected"
+                                    >{{ selectedInFamilyCount(family) }}</span>
+                                </button>
+                            </div>
+                            <div v-if="activeFamily" class="filter-family-panel">
+                                <div class="filter-family-panel-header">
+                                    <span class="filter-family-panel-title">{{ activeFamily.name }}</span>
+                                    <button
+                                        type="button"
+                                        class="filter-family-action"
+                                        @click="toggleAllInFamily(activeFamily)"
+                                    >
+                                        {{ allSelectedInFamily(activeFamily) ? 'Clear all' : 'Select all' }}
+                                    </button>
+                                </div>
+                                <div class="filter-chip-row">
+                                    <button
+                                        v-for="item in activeFamily.items"
+                                        :key="`color-${activeFamily.name}-${item.canonical}`"
+                                        type="button"
+                                        class="filter-chip"
+                                        :class="{ 'filter-chip-active': selectedColors.includes(item.canonical) }"
+                                        @click="toggleColor(item.canonical)"
+                                    >
+                                        {{ item.label }}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div v-else class="filter-empty">No colors recorded yet.</div>
-                        <button
-                            v-if="hiddenColorCount > 0"
-                            type="button"
-                            class="filter-show-more"
-                            @click="showAllColors = !showAllColors"
-                        >
-                            <span>{{ showAllColors ? 'Show fewer colors' : `Show all colors (${sortedColors.length})` }}</span>
-                            <svg
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                aria-hidden="true"
-                                :style="{ transform: showAllColors ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }"
-                            >
-                                <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </button>
                     </section>
                 </div>
 
@@ -378,22 +431,118 @@ onUnmounted(() => {
     font-size: 13px;
 }
 
-.filter-show-more {
-    margin-top: 10px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border: none;
-    background: transparent;
-    color: #0b63d6;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    border-radius: 8px;
+.filter-family-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.filter-show-more:hover {
+.filter-family-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.filter-family-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(18, 58, 138, 0.18);
+    background: rgba(244, 248, 255, 0.96);
+    color: #0a2b67;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.filter-family-pill:hover {
+    border-color: rgba(37, 99, 235, 0.32);
+    background: rgba(215, 230, 255, 0.95);
+}
+
+.filter-family-pill-active {
+    background: linear-gradient(90deg, #2563eb, #0b63d6);
+    color: #fff;
+    border-color: transparent;
+}
+
+.filter-family-pill-active:hover {
+    background: linear-gradient(90deg, #1e4fd1, #0856bf);
+}
+
+.filter-family-pill-has-selection:not(.filter-family-pill-active) {
+    border-color: rgba(11, 99, 214, 0.55);
+    background: rgba(11, 99, 214, 0.08);
+}
+
+.filter-family-pill-name {
+    font-size: 14px;
+}
+
+.filter-family-pill-count {
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.7;
+}
+
+.filter-family-pill-selected {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: #0b63d6;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.filter-family-pill:not(.filter-family-pill-active) .filter-family-pill-selected {
+    background: #0b63d6;
+    color: #fff;
+}
+
+.filter-family-panel {
+    border: 1px solid rgba(11, 99, 214, 0.22);
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 12px 14px;
+}
+
+.filter-family-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.filter-family-panel-title {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #082145;
+}
+
+.filter-family-action {
+    border: 1px solid rgba(11, 99, 214, 0.18);
+    background: rgba(255, 255, 255, 0.9);
+    color: #0b63d6;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.filter-family-action:hover {
     background: rgba(11, 99, 214, 0.08);
 }
 
