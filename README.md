@@ -84,25 +84,32 @@ Routing uses hash mode (`/#/`) so direct page refresh works on GitHub Pages with
 - `/#/search-inventory` Search inventory page
 - `/#/search-inventory/:id` Bin detail and item/variation management page
 - `/#/update-inventory` Bulk update variation quantities from a Shopify or Square CSV file
+- `/#/reports` Reports hub for inventory exports (Shopify export, QR labels, low-stock CSV, Word price sheet)
 
 The app uses a persistent left dashboard for navigation between all pages.
 
 ## Project structure
 
+- `src/views/LoginView.vue` Login form
 - `src/views/HomeView.vue` Home page with step options
 - `src/views/PreConView.vue` Pre-conversion checklist page
 - `src/views/PostConView.vue` Post-conversion checklist page
 - `src/views/ShopifyToSquareView.vue` Shopify → Square UI
 - `src/views/UpdateQuantityView.vue` Quantity update UI
-- `src/views/SearchInventoryView.vue` Bin search and bin CRUD UI
+- `src/views/SearchInventoryView.vue` Bin search and bin CRUD UI (with inventory filter modal)
 - `src/views/BinDetailView.vue` Bin detail plus item and variation CRUD UI (inline qty/price editing, +1 quantity button)
 - `src/views/UpdateInventoryView.vue` Bulk DB update from uploaded Shopify or Square CSV
+- `src/views/ReportsView.vue` Reports hub — entry point for Shopify export, QR labels, low-stock, Word price sheet
 - `src/components/ItemFormModal.vue` Create/edit item — includes size/color variation auto-generator and base SKU
 - `src/components/VariationFormModal.vue` Create/edit individual variation (auto-fills base SKU)
 - `src/components/BinFormModal.vue` Create/edit bin
 - `src/components/ConfirmModal.vue` Generic delete confirmation
 - `src/components/QrExportModal.vue` Mass QR code label printing
 - `src/components/ExportPreviewModal.vue` Print inventory as Word doc price sheet
+- `src/components/LowStockExportModal.vue` Low-stock variation CSV export with quantity threshold
+- `src/components/ShopifyExportVariations.vue` Shopify CSV export of products / inventory from the DB
+- `src/components/InventoryFilterModal.vue` Search Inventory filter popup (size, style, color families with Select-all)
+- `src/components/InfiniteCarousel.vue` Reusable looping image carousel
 - `src/lib/convertShopToSquare.js` Shopify → Square transformation logic
 - `src/lib/updateInventoryFromSquare.js` Quantity sync logic (Square → DB)
 - `src/lib/updateInventoryFromShopify.js` Quantity sync logic (Shopify → DB)
@@ -112,8 +119,16 @@ The app uses a persistent left dashboard for navigation between all pages.
 - `src/lib/itemCrud.js` Item CRUD helpers
 - `src/lib/variationCrud.js` Variation CRUD helpers
 - `src/lib/auth.js` Auth helpers (localStorage session)
+- `src/lib/supabase.js` Supabase client setup (reads `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`)
+- `src/lib/inventoryFilters.js` Shared filter state for Search Inventory + Bin Detail (sessionStorage-backed) plus matching helpers
+- `src/lib/colorFamilies.js` Color family taxonomy + substring classifier used by the inventory filter modal
 - `src/router/index.js` Vue Router setup with auth guard
+- `supabase/get_inventory_summary.sql` Postgres RPC returning distinct sizes/colors/styles + counts in one call
 - `styles.css` Shared styling
+
+## Inventory color families
+
+The Search Inventory filter groups colors into families (Grey, Blue, Green, …) using a substring keyword scan. To add a new family or extend an existing one with more keywords (e.g. `sage`, `crimson`, `taupe`), edit the `COLOR_FAMILIES` config in [`src/lib/colorFamilies.js`](src/lib/colorFamilies.js) — no other code changes needed; `classifyColor` will pick it up automatically.
 
 ## Test data
 
