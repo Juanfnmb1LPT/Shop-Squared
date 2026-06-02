@@ -6,7 +6,7 @@ import { groupColorsByFamily } from '../lib/colorFamilies';
 const props = defineProps({
     initialFilters: {
         type: Object,
-        default: () => ({ inStockOnly: false, sizes: [], colors: [], styles: [] }),
+        default: () => ({ inStockOnly: false, requireAllSizesInStock: false, sizes: [], colors: [], styles: [] }),
     },
     availableSizes: { type: Array, default: () => [] },
     availableColors: { type: Array, default: () => [] },
@@ -18,6 +18,7 @@ const dialogRef = ref(null);
 let previousFocus = null;
 
 const inStockOnly = ref(!!props.initialFilters.inStockOnly);
+const requireAllSizesInStock = ref(!!props.initialFilters.requireAllSizesInStock);
 const selectedSizes = ref([...(props.initialFilters.sizes || [])]);
 const selectedColors = ref([...(props.initialFilters.colors || [])].map(canonicalColor).filter(Boolean));
 const selectedStyles = ref([...(props.initialFilters.styles || [])]);
@@ -106,6 +107,7 @@ function toggleStyle(value) { toggleArray(selectedStyles, value); }
 
 function clearAll() {
     inStockOnly.value = false;
+    requireAllSizesInStock.value = false;
     selectedSizes.value = [];
     selectedColors.value = [];
     selectedStyles.value = [];
@@ -123,6 +125,7 @@ const activeCount = computed(() => {
 function applyFilters() {
     emit('apply', {
         inStockOnly: inStockOnly.value,
+        requireAllSizesInStock: requireAllSizesInStock.value,
         sizes: [...selectedSizes.value],
         colors: [...selectedColors.value],
         styles: [...selectedStyles.value],
@@ -205,6 +208,13 @@ onUnmounted(() => {
                             </button>
                         </div>
                         <div v-else class="filter-empty">No sizes recorded yet.</div>
+                        <label class="filter-toggle filter-toggle-inline">
+                            <input type="checkbox" v-model="requireAllSizesInStock" :disabled="!selectedSizes.length" />
+                            <span class="filter-toggle-label">Require all selected sizes in stock</span>
+                        </label>
+                        <div class="filter-subnote">
+                            Only show items that have every selected size in stock in a single color.
+                        </div>
                     </section>
 
                     <section class="filter-section">
@@ -565,6 +575,25 @@ onUnmounted(() => {
     font-weight: 600;
     color: #082145;
     font-size: 15px;
+}
+
+.filter-toggle-inline {
+    margin-top: 12px;
+}
+
+.filter-toggle-inline input:disabled {
+    cursor: not-allowed;
+}
+
+.filter-toggle-inline input:disabled + .filter-toggle-label {
+    color: #9ca3af;
+}
+
+.filter-subnote {
+    margin-top: 4px;
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 1.4;
 }
 
 .filter-actions {
