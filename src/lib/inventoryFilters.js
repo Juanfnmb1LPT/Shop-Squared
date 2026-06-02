@@ -17,7 +17,7 @@ function uniqueCanonical(list) {
 }
 
 export function defaultFilters() {
-    return { inStockOnly: false, sizes: [], colors: [], styles: [] };
+    return { inStockOnly: false, requireAllSizesInStock: false, sizes: [], colors: [], styles: [] };
 }
 
 function readStoredFilters() {
@@ -27,6 +27,7 @@ function readStoredFilters() {
         const parsed = JSON.parse(raw);
         return {
             inStockOnly: !!parsed.inStockOnly,
+            requireAllSizesInStock: !!parsed.requireAllSizesInStock,
             sizes: Array.isArray(parsed.sizes) ? parsed.sizes : [],
             colors: Array.isArray(parsed.colors) ? uniqueCanonical(parsed.colors) : [],
             styles: Array.isArray(parsed.styles) ? parsed.styles : [],
@@ -103,6 +104,7 @@ export function useInventoryFilters() {
 export function setInventoryFilters(next) {
     inventoryFilters.value = {
         inStockOnly: !!next?.inStockOnly,
+        requireAllSizesInStock: !!next?.requireAllSizesInStock,
         sizes: [...(next?.sizes || [])],
         colors: uniqueCanonical(next?.colors),
         styles: [...(next?.styles || [])],
