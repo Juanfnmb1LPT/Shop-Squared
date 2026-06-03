@@ -40,5 +40,6 @@ as $$
   );
 $$;
 
--- Allow authenticated and anon roles (client uses anon key) to call it.
-grant execute on function public.get_inventory_summary() to anon, authenticated;
+-- Only signed-in users may call it; anon (unauthenticated) is denied.
+grant execute on function public.get_inventory_summary() to authenticated;
+revoke execute on function public.get_inventory_summary() from anon;

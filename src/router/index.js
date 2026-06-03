@@ -1,8 +1,9 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
-import { isAuthenticated } from '../lib/auth';
+import { authReady, isAuthenticated, needsPasswordSet } from '../lib/auth';
 
 const HomeView = () => import('../views/HomeView.vue');
 const LoginView = () => import('../views/LoginView.vue');
+const SetPasswordView = () => import('../views/SetPasswordView.vue');
 const PreConView = () => import('../views/PreConView.vue');
 const PostConView = () => import('../views/PostConView.vue');
 const ShopifyToSquareView = () => import('../views/ShopifyToSquareView.vue');
@@ -16,6 +17,7 @@ const router = createRouter({
     history: createWebHashHistory(),
     routes: [
         { path: '/login', name: 'login', component: LoginView },
+        { path: '/set-password', name: 'set-password', component: SetPasswordView, meta: { requiresAuth: true } },
         { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true } },
         { path: '/pre-con', name: 'pre-con', component: PreConView, meta: { requiresAuth: true } },
         { path: '/post-con', name: 'post-con', component: PostConView, meta: { requiresAuth: true } },
@@ -29,8 +31,14 @@ const router = createRouter({
     ],
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
+    await authReady;
     const loggedIn = isAuthenticated();
+
+    // A user who arrived via an invite / reset link must set a password first.
+    if (loggedIn && needsPasswordSet.value && to.name !== 'set-password') {
+        return { name: 'set-password' };
+    }
 
     if (to.name === 'login') {
         return loggedIn ? { name: 'home' } : true;
