@@ -47,12 +47,12 @@ function closeNav() {
   isNavOpen.value = false;
 }
 
-function handleLogout() {
+async function handleLogout() {
   if (!isAuthenticated()) {
     return;
   }
 
-  logout();
+  await logout();
   closeNav();
   router.replace('/login');
 }
