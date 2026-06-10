@@ -2,6 +2,25 @@ import { ref, watch } from 'vue';
 
 const STORAGE_KEY = 'inventory-filters';
 
+// Sentinel style value meaning "any style that isn't a known one (Mens/Womens)".
+// Covers blank/unset styles and anything else (e.g. travel cups, drinkware).
+export const MISC_STYLE = '__misc__';
+const KNOWN_STYLE_SET = new Set(['mens', 'womens']);
+
+export function styleLabel(value) {
+    return value === MISC_STYLE ? 'Miscellaneous' : value;
+}
+
+export function styleMatches(rawStyle, selectedStyles) {
+    if (!selectedStyles || !selectedStyles.length) return true;
+    const value = String(rawStyle ?? '').trim();
+    return selectedStyles.some((sel) =>
+        sel === MISC_STYLE
+            ? !KNOWN_STYLE_SET.has(value.toLowerCase())
+            : value === sel,
+    );
+}
+
 export function canonicalColor(value) {
     return String(value ?? '').trim().toLowerCase();
 }
@@ -69,8 +88,7 @@ export function variationMatchesFilters(variation, filters) {
         if (!filters.colors.includes(v)) return false;
     }
     if (filters.styles.length) {
-        const v = String(variation?.style ?? '').trim();
-        if (!filters.styles.includes(v)) return false;
+        if (!styleMatches(variation?.style, filters.styles)) return false;
     }
     return true;
 }
