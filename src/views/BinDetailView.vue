@@ -16,11 +16,18 @@ import {
   hasActiveFilters,
   activeFilterCount as activeFilterCountFn,
   displayColor,
+  styleLabel,
+  canonicalColor,
 } from '../lib/inventoryFilters';
 
 const filters = useInventoryFilters();
 const activeFilterCount = computed(() => activeFilterCountFn(filters.value));
 const filtersAreActive = computed(() => hasActiveFilters(filters.value));
+// Mirror Search's strict "require all selected sizes in stock" run so an item
+// hidden there doesn't reappear here with only some of its sizes.
+const requireRunActive = computed(
+  () => filters.value.requireAllSizesInStock && filters.value.sizes.length > 0,
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -270,7 +277,29 @@ function formatPrice(value) {
 function itemVariations(itemId) {
   const all = variationsByItemId.value[itemId] || [];
   if (!filtersAreActive.value) return all;
-  return all.filter((v) => variationMatchesFilters(v, filters.value));
+  const matched = all.filter((v) => variationMatchesFilters(v, filters.value));
+  if (!requireRunActive.value) return matched;
+
+  // Strict run: keep only colors whose in-stock variations cover every selected
+  // size, then show those variations (an item can qualify in several colors).
+  const inStock = matched.filter((v) => Number(v.quantity || 0) > 0);
+  const needed = filters.value.sizes.map((s) => String(s).trim());
+  const sizesByColor = new Map();
+  for (const v of inStock) {
+    const canon = canonicalColor(v.color);
+    let set = sizesByColor.get(canon);
+    if (!set) {
+      set = new Set();
+      sizesByColor.set(canon, set);
+    }
+    set.add(String(v.size ?? '').trim());
+  }
+  const qualifyingColors = new Set();
+  for (const [canon, sizes] of sizesByColor) {
+    if (needed.every((size) => sizes.has(size))) qualifyingColors.add(canon);
+  }
+  if (!qualifyingColors.size) return [];
+  return inStock.filter((v) => qualifyingColors.has(canonicalColor(v.color)));
 }
 
 const filteredItems = computed(() => {
@@ -931,7 +960,7 @@ onMounted(loadBinDetail);
         <span v-if="filters.inStockOnly" class="inventory-filter-pill">In stock only</span>
         <span v-for="size in filters.sizes" :key="`bin-pill-size-${size}`" class="inventory-filter-pill">Size: {{ size }}</span>
         <span v-for="color in filters.colors" :key="`bin-pill-color-${color}`" class="inventory-filter-pill">Color: {{ displayColor(color) }}</span>
-        <span v-for="style in filters.styles" :key="`bin-pill-style-${style}`" class="inventory-filter-pill">Style: {{ style }}</span>
+        <span v-for="style in filters.styles" :key="`bin-pill-style-${style}`" class="inventory-filter-pill">Style: {{ styleLabel(style) }}</span>
         <button class="inventory-filter-clear" type="button" @click="clearFiltersFromBin">Clear filters</button>
       </div>
 
